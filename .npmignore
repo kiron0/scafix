@@ -1,0 +1,14 @@
+/src
+/node_modules
+package-lock.json
+bun.lock
+.github
+
+.env
+.DS_Store
+
+tsconfig.json
+tsup.config.ts
+
+*.test.ts
+*.md
