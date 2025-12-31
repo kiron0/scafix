@@ -1,4 +1,4 @@
-import prompts from "prompts";
+import { select, confirm, multiselect } from "@clack/prompts";
 import { logger } from "../utils/logger.js";
 
 export interface ViteReactCustomizations {
@@ -74,134 +74,139 @@ export async function promptViteReactCustomizations(
     };
 
     // TypeScript or JavaScript
-    const tsResponse = await prompts({
-      type: "select",
-      name: "typescript",
+    const tsResponse = await select({
       message: "Use TypeScript?",
-      choices: [
-        { title: "Yes", value: true },
-        { title: "No (JavaScript)", value: false },
+      options: [
+        { label: "Yes", value: true },
+        { label: "No (JavaScript)", value: false },
       ],
-      initial: 0,
     });
-    customizations.typescript = tsResponse.typescript ?? true;
+    if (typeof tsResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.typescript = tsResponse ?? true;
 
     // Tailwind CSS
-    const tailwindResponse = await prompts({
-      type: "confirm",
-      name: "tailwind",
+    const tailwindResponse = await confirm({
       message: "Add Tailwind CSS?",
-      initial: false,
+      initialValue: false,
     });
-    customizations.tailwind = tailwindResponse.tailwind ?? false;
+    if (typeof tailwindResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.tailwind = tailwindResponse ?? false;
 
     if (customizations.tailwind) {
-      const tailwindVersionResponse = await prompts({
-        type: "select",
-        name: "version",
+      const tailwindVersionResponse = await select({
         message: "Tailwind CSS version:",
-        choices: [
-          { title: "v4 (Latest)", value: "v4" },
-          { title: "v3 (Stable)", value: "v3" },
+        options: [
+          { label: "v4 (Latest)", value: "v4" },
+          { label: "v3 (Stable)", value: "v3" },
         ],
-        initial: 0,
       });
-      customizations.tailwindVersion = tailwindVersionResponse.version ?? "v4";
+      if (typeof tailwindVersionResponse === "symbol") {
+        throw new Error("Prompt cancelled");
+      }
+      customizations.tailwindVersion = tailwindVersionResponse ?? "v4";
     }
 
     // Shadcn UI
     if (customizations.tailwind) {
-      const shadcnResponse = await prompts({
-        type: "confirm",
-        name: "shadcn",
+      const shadcnResponse = await confirm({
         message: "Add shadcn/ui?",
-        initial: false,
+        initialValue: false,
       });
-      customizations.shadcn = shadcnResponse.shadcn ?? false;
+      if (typeof shadcnResponse === "symbol") {
+        throw new Error("Prompt cancelled");
+      }
+      customizations.shadcn = shadcnResponse ?? false;
 
       if (customizations.shadcn) {
         const shadcnOptions: ViteReactCustomizations["shadcnOptions"] = {};
 
         // Style
-        const styleResponse = await prompts({
-          type: "select",
-          name: "style",
+        const styleResponse = await select({
           message: "shadcn/ui style:",
-          choices: [
-            { title: "Default", value: "default" },
-            { title: "New York", value: "new-york" },
+          options: [
+            { label: "Default", value: "default" },
+            { label: "New York", value: "new-york" },
           ],
-          initial: 0,
         });
-        shadcnOptions.style = styleResponse.style ?? "default";
+        if (typeof styleResponse === "symbol") {
+          throw new Error("Prompt cancelled");
+        }
+        shadcnOptions.style = styleResponse ?? "default";
 
         // Base color
-        const colorResponse = await prompts({
-          type: "select",
-          name: "baseColor",
+        const colorResponse = await select({
           message: "Base color:",
-          choices: [
-            { title: "Slate", value: "slate" },
-            { title: "Gray", value: "gray" },
-            { title: "Zinc", value: "zinc" },
-            { title: "Neutral", value: "neutral" },
-            { title: "Stone", value: "stone" },
+          options: [
+            { label: "Slate", value: "slate" },
+            { label: "Gray", value: "gray" },
+            { label: "Zinc", value: "zinc" },
+            { label: "Neutral", value: "neutral" },
+            { label: "Stone", value: "stone" },
           ],
-          initial: 0,
         });
-        shadcnOptions.baseColor = colorResponse.baseColor ?? "slate";
+        if (typeof colorResponse === "symbol") {
+          throw new Error("Prompt cancelled");
+        }
+        shadcnOptions.baseColor = colorResponse ?? "slate";
 
         // CSS Variables
-        const cssVarsResponse = await prompts({
-          type: "confirm",
-          name: "cssVariables",
+        const cssVarsResponse = await confirm({
           message: "Use CSS variables for theming?",
-          initial: true,
+          initialValue: true,
         });
-        shadcnOptions.cssVariables = cssVarsResponse.cssVariables ?? true;
+        if (typeof cssVarsResponse === "symbol") {
+          throw new Error("Prompt cancelled");
+        }
+        shadcnOptions.cssVariables = cssVarsResponse ?? true;
 
         // Components (multi-select)
-        const componentsResponse = await prompts({
-          type: "multiselect",
-          name: "components",
+        const componentsResponse = await multiselect({
           message: "Select shadcn/ui components to install:",
-          choices: [
-            { title: "Button", value: "button" },
-            { title: "Card", value: "card" },
-            { title: "Input", value: "input" },
-            { title: "Label", value: "label" },
-            { title: "Dialog", value: "dialog" },
-            { title: "Dropdown Menu", value: "dropdown-menu" },
-            { title: "Select", value: "select" },
-            { title: "Tabs", value: "tabs" },
-            { title: "Toast", value: "toast" },
-            { title: "Avatar", value: "avatar" },
+          options: [
+            { label: "Button", value: "button" },
+            { label: "Card", value: "card" },
+            { label: "Input", value: "input" },
+            { label: "Label", value: "label" },
+            { label: "Dialog", value: "dialog" },
+            { label: "Dropdown Menu", value: "dropdown-menu" },
+            { label: "Select", value: "select" },
+            { label: "Tabs", value: "tabs" },
+            { label: "Toast", value: "toast" },
+            { label: "Avatar", value: "avatar" },
           ],
-          hint: "- Space to select. Return to submit",
         });
-        shadcnOptions.components = componentsResponse.components ?? [];
+        if (typeof componentsResponse === "symbol") {
+          throw new Error("Prompt cancelled");
+        }
+        shadcnOptions.components = componentsResponse ?? [];
 
         customizations.shadcnOptions = shadcnOptions;
       }
     }
 
     // ESLint
-    const eslintResponse = await prompts({
-      type: "confirm",
-      name: "eslint",
+    const eslintResponse = await confirm({
       message: "Add ESLint?",
-      initial: true,
+      initialValue: true,
     });
-    customizations.eslint = eslintResponse.eslint ?? true;
+    if (typeof eslintResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.eslint = eslintResponse ?? true;
 
     // Prettier
-    const prettierResponse = await prompts({
-      type: "confirm",
-      name: "prettier",
+    const prettierResponse = await confirm({
       message: "Add Prettier?",
-      initial: false,
+      initialValue: false,
     });
-    customizations.prettier = prettierResponse.prettier ?? false;
+    if (typeof prettierResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.prettier = prettierResponse ?? false;
 
     return customizations;
   } catch (error) {
@@ -245,148 +250,155 @@ export async function promptNextCustomizations(
     };
 
     // TypeScript
-    const tsResponse = await prompts({
-      type: "select",
-      name: "typescript",
+    const tsResponse = await select({
       message: "Use TypeScript?",
-      choices: [
-        { title: "Yes", value: true },
-        { title: "No (JavaScript)", value: false },
+      options: [
+        { label: "Yes", value: true },
+        { label: "No (JavaScript)", value: false },
       ],
-      initial: 0,
     });
-    customizations.typescript = tsResponse.typescript ?? true;
+    if (typeof tsResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.typescript = tsResponse ?? true;
 
     // Tailwind CSS
-    const tailwindResponse = await prompts({
-      type: "confirm",
-      name: "tailwind",
+    const tailwindResponse = await confirm({
       message: "Add Tailwind CSS?",
-      initial: true,
+      initialValue: true,
     });
-    customizations.tailwind = tailwindResponse.tailwind ?? true;
+    if (typeof tailwindResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.tailwind = tailwindResponse ?? true;
 
     if (customizations.tailwind) {
-      const tailwindVersionResponse = await prompts({
-        type: "select",
-        name: "version",
+      const tailwindVersionResponse = await select({
         message: "Tailwind CSS version:",
-        choices: [
-          { title: "v4 (Latest)", value: "v4" },
-          { title: "v3 (Stable)", value: "v3" },
+        options: [
+          { label: "v4 (Latest)", value: "v4" },
+          { label: "v3 (Stable)", value: "v3" },
         ],
-        initial: 0,
       });
-      customizations.tailwindVersion = tailwindVersionResponse.version ?? "v4";
+      if (typeof tailwindVersionResponse === "symbol") {
+        throw new Error("Prompt cancelled");
+      }
+      customizations.tailwindVersion = tailwindVersionResponse ?? "v4";
     }
 
     // Shadcn UI
     if (customizations.tailwind) {
-      const shadcnResponse = await prompts({
-        type: "confirm",
-        name: "shadcn",
+      const shadcnResponse = await confirm({
         message: "Add shadcn/ui?",
-        initial: false,
+        initialValue: false,
       });
-      customizations.shadcn = shadcnResponse.shadcn ?? false;
+      if (typeof shadcnResponse === "symbol") {
+        throw new Error("Prompt cancelled");
+      }
+      customizations.shadcn = shadcnResponse ?? false;
 
       if (customizations.shadcn) {
         const shadcnOptions: NextCustomizations["shadcnOptions"] = {};
 
-        const styleResponse = await prompts({
-          type: "select",
-          name: "style",
+        const styleResponse = await select({
           message: "shadcn/ui style:",
-          choices: [
-            { title: "Default", value: "default" },
-            { title: "New York", value: "new-york" },
+          options: [
+            { label: "Default", value: "default" },
+            { label: "New York", value: "new-york" },
           ],
-          initial: 0,
         });
-        shadcnOptions.style = styleResponse.style ?? "default";
+        if (typeof styleResponse === "symbol") {
+          throw new Error("Prompt cancelled");
+        }
+        shadcnOptions.style = styleResponse ?? "default";
 
-        const colorResponse = await prompts({
-          type: "select",
-          name: "baseColor",
+        const colorResponse = await select({
           message: "Base color:",
-          choices: [
-            { title: "Slate", value: "slate" },
-            { title: "Gray", value: "gray" },
-            { title: "Zinc", value: "zinc" },
-            { title: "Neutral", value: "neutral" },
-            { title: "Stone", value: "stone" },
+          options: [
+            { label: "Slate", value: "slate" },
+            { label: "Gray", value: "gray" },
+            { label: "Zinc", value: "zinc" },
+            { label: "Neutral", value: "neutral" },
+            { label: "Stone", value: "stone" },
           ],
-          initial: 0,
         });
-        shadcnOptions.baseColor = colorResponse.baseColor ?? "slate";
+        if (typeof colorResponse === "symbol") {
+          throw new Error("Prompt cancelled");
+        }
+        shadcnOptions.baseColor = colorResponse ?? "slate";
 
-        const cssVarsResponse = await prompts({
-          type: "confirm",
-          name: "cssVariables",
+        const cssVarsResponse = await confirm({
           message: "Use CSS variables for theming?",
-          initial: true,
+          initialValue: true,
         });
-        shadcnOptions.cssVariables = cssVarsResponse.cssVariables ?? true;
+        if (typeof cssVarsResponse === "symbol") {
+          throw new Error("Prompt cancelled");
+        }
+        shadcnOptions.cssVariables = cssVarsResponse ?? true;
 
-        const componentsResponse = await prompts({
-          type: "multiselect",
-          name: "components",
+        const componentsResponse = await multiselect({
           message: "Select shadcn/ui components to install:",
-          choices: [
-            { title: "Button", value: "button" },
-            { title: "Card", value: "card" },
-            { title: "Input", value: "input" },
-            { title: "Label", value: "label" },
-            { title: "Dialog", value: "dialog" },
-            { title: "Dropdown Menu", value: "dropdown-menu" },
-            { title: "Select", value: "select" },
-            { title: "Tabs", value: "tabs" },
-            { title: "Toast", value: "toast" },
-            { title: "Avatar", value: "avatar" },
+          options: [
+            { label: "Button", value: "button" },
+            { label: "Card", value: "card" },
+            { label: "Input", value: "input" },
+            { label: "Label", value: "label" },
+            { label: "Dialog", value: "dialog" },
+            { label: "Dropdown Menu", value: "dropdown-menu" },
+            { label: "Select", value: "select" },
+            { label: "Tabs", value: "tabs" },
+            { label: "Toast", value: "toast" },
+            { label: "Avatar", value: "avatar" },
           ],
-          hint: "- Space to select. Return to submit",
         });
-        shadcnOptions.components = componentsResponse.components ?? [];
+        if (typeof componentsResponse === "symbol") {
+          throw new Error("Prompt cancelled");
+        }
+        shadcnOptions.components = componentsResponse ?? [];
 
         customizations.shadcnOptions = shadcnOptions;
       }
     }
 
     // ESLint
-    const eslintResponse = await prompts({
-      type: "confirm",
-      name: "eslint",
+    const eslintResponse = await confirm({
       message: "Add ESLint?",
-      initial: true,
+      initialValue: true,
     });
-    customizations.eslint = eslintResponse.eslint ?? true;
+    if (typeof eslintResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.eslint = eslintResponse ?? true;
 
     // Prettier
-    const prettierResponse = await prompts({
-      type: "confirm",
-      name: "prettier",
+    const prettierResponse = await confirm({
       message: "Add Prettier?",
-      initial: false,
+      initialValue: false,
     });
-    customizations.prettier = prettierResponse.prettier ?? false;
+    if (typeof prettierResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.prettier = prettierResponse ?? false;
 
     // App Router
-    const appRouterResponse = await prompts({
-      type: "confirm",
-      name: "appRouter",
+    const appRouterResponse = await confirm({
       message: "Use App Router?",
-      initial: true,
+      initialValue: true,
     });
-    customizations.appRouter = appRouterResponse.appRouter ?? true;
+    if (typeof appRouterResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.appRouter = appRouterResponse ?? true;
 
     // src directory
-    const srcDirResponse = await prompts({
-      type: "confirm",
-      name: "srcDir",
+    const srcDirResponse = await confirm({
       message: "Use src/ directory?",
-      initial: true,
+      initialValue: true,
     });
-    customizations.srcDir = srcDirResponse.srcDir ?? true;
+    if (typeof srcDirResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.srcDir = srcDirResponse ?? true;
 
     return customizations;
   } catch (error) {
@@ -431,93 +443,98 @@ export async function promptExpressCustomizations(
     };
 
     // TypeScript
-    const tsResponse = await prompts({
-      type: "select",
-      name: "typescript",
+    const tsResponse = await select({
       message: "Use TypeScript?",
-      choices: [
-        { title: "Yes", value: true },
-        { title: "No (JavaScript)", value: false },
+      options: [
+        { label: "Yes", value: true },
+        { label: "No (JavaScript)", value: false },
       ],
-      initial: 0,
     });
-    customizations.typescript = tsResponse.typescript ?? true;
+    if (typeof tsResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.typescript = tsResponse ?? true;
 
     // Architecture Pattern
-    const patternResponse = await prompts({
-      type: "select",
-      name: "pattern",
+    const patternResponse = await select({
       message: "Select architecture pattern:",
-      choices: [
+      options: [
         {
-          title: "MVC (Model-View-Controller)",
-          description: "Separates concerns into models, views, and controllers",
+          label: "MVC (Model-View-Controller)",
+          hint: "Separates concerns into models, views, and controllers",
           value: "mvc",
         },
         {
-          title: "REST API",
-          description: "RESTful API with routes, controllers, and services",
+          label: "REST API",
+          hint: "RESTful API with routes, controllers, and services",
           value: "rest",
         },
         {
-          title: "Layered Architecture",
-          description: "Presentation, Business, and Data layers",
+          label: "Layered Architecture",
+          hint: "Presentation, Business, and Data layers",
           value: "layered",
         },
         {
-          title: "Simple",
-          description: "Minimal structure with routes and middleware",
+          label: "Simple",
+          hint: "Minimal structure with routes and middleware",
           value: "simple",
         },
       ],
-      initial: 0,
     });
-    customizations.pattern = patternResponse.pattern ?? "mvc";
+    if (typeof patternResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.pattern = patternResponse ?? "mvc";
 
     // ESLint
-    const eslintResponse = await prompts({
-      type: "confirm",
-      name: "eslint",
+    const eslintResponse = await confirm({
       message: "Add ESLint?",
-      initial: true,
+      initialValue: true,
     });
-    customizations.eslint = eslintResponse.eslint ?? true;
+    if (typeof eslintResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.eslint = eslintResponse ?? true;
 
     // Prettier
-    const prettierResponse = await prompts({
-      type: "confirm",
-      name: "prettier",
+    const prettierResponse = await confirm({
       message: "Add Prettier?",
-      initial: false,
+      initialValue: false,
     });
-    customizations.prettier = prettierResponse.prettier ?? false;
+    if (typeof prettierResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.prettier = prettierResponse ?? false;
 
     // CORS
-    const corsResponse = await prompts({
-      type: "confirm",
-      name: "cors",
+    const corsResponse = await confirm({
       message: "Add CORS support?",
-      initial: false,
+      initialValue: false,
     });
-    customizations.cors = corsResponse.cors ?? false;
+    if (typeof corsResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.cors = corsResponse ?? false;
 
     // Helmet
-    const helmetResponse = await prompts({
-      type: "confirm",
-      name: "helmet",
+    const helmetResponse = await confirm({
       message: "Add Helmet (security headers)?",
-      initial: false,
+      initialValue: false,
     });
-    customizations.helmet = helmetResponse.helmet ?? false;
+    if (typeof helmetResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.helmet = helmetResponse ?? false;
 
     // dotenv
-    const dotenvResponse = await prompts({
-      type: "confirm",
-      name: "dotenv",
+    const dotenvResponse = await confirm({
       message: "Add dotenv for environment variables?",
-      initial: true,
+      initialValue: true,
     });
-    customizations.dotenv = dotenvResponse.dotenv ?? true;
+    if (typeof dotenvResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.dotenv = dotenvResponse ?? true;
 
     return customizations;
   } catch (error) {
@@ -557,77 +574,80 @@ export async function promptNpmPackageCustomizations(
     };
 
     // TypeScript
-    const tsResponse = await prompts({
-      type: "select",
-      name: "typescript",
+    const tsResponse = await select({
       message: "Use TypeScript?",
-      choices: [
-        { title: "Yes", value: true },
-        { title: "No (JavaScript)", value: false },
+      options: [
+        { label: "Yes", value: true },
+        { label: "No (JavaScript)", value: false },
       ],
-      initial: 0,
     });
-    customizations.typescript = tsResponse.typescript ?? true;
+    if (typeof tsResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.typescript = tsResponse ?? true;
 
     // Build tool (only ask if TypeScript is selected)
     if (customizations.typescript) {
-      const buildToolResponse = await prompts({
-        type: "select",
-        name: "buildTool",
+      const buildToolResponse = await select({
         message: "Select build tool:",
-        choices: [
+        options: [
           {
-            title: "tsup",
-            description: "Fast, zero-config bundler (Recommended)",
+            label: "tsup",
+            hint: "Fast, zero-config bundler (Recommended)",
             value: "tsup",
           },
           {
-            title: "Rollup",
-            description: "Module bundler with tree-shaking",
+            label: "Rollup",
+            hint: "Module bundler with tree-shaking",
             value: "rollup",
           },
           {
-            title: "esbuild",
-            description: "Extremely fast JavaScript bundler",
+            label: "esbuild",
+            hint: "Extremely fast JavaScript bundler",
             value: "esbuild",
           },
           {
-            title: "None (TypeScript compiler only)",
-            description: "Use tsc directly",
+            label: "None (TypeScript compiler only)",
+            hint: "Use tsc directly",
             value: "none",
           },
         ],
-        initial: 0,
       });
-      customizations.buildTool = buildToolResponse.buildTool ?? "tsup";
+      if (typeof buildToolResponse === "symbol") {
+        throw new Error("Prompt cancelled");
+      }
+      customizations.buildTool = buildToolResponse ?? "tsup";
     }
 
     // ESLint
-    const eslintResponse = await prompts({
-      type: "confirm",
-      name: "eslint",
+    const eslintResponse = await confirm({
       message: "Add ESLint?",
-      initial: true,
+      initialValue: true,
     });
-    customizations.eslint = eslintResponse.eslint ?? true;
+    if (typeof eslintResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.eslint = eslintResponse ?? true;
 
     // Prettier
-    const prettierResponse = await prompts({
-      type: "confirm",
-      name: "prettier",
+    const prettierResponse = await confirm({
       message: "Add Prettier?",
-      initial: false,
+      initialValue: false,
     });
-    customizations.prettier = prettierResponse.prettier ?? false;
+    if (typeof prettierResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.prettier = prettierResponse ?? false;
 
     // Tests
-    const testsResponse = await prompts({
-      type: "confirm",
-      name: "tests",
+    const testsResponse = await confirm({
       message: "Add test setup (Vitest)?",
-      initial: false,
+      initialValue: false,
     });
-    customizations.tests = testsResponse.tests ?? false;
+    if (typeof testsResponse === "symbol") {
+      throw new Error("Prompt cancelled");
+    }
+    customizations.tests = testsResponse ?? false;
 
     return customizations;
   } catch (error) {

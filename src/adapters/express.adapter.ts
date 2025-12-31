@@ -1,3 +1,4 @@
+import { spinner } from "@clack/prompts";
 import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import type { ExpressCustomizations } from "../prompts/customizations.js";
@@ -52,7 +53,7 @@ async function generateMVCStructure(
   if (customizations.dotenv) indexContent += `\nimport 'dotenv/config'`;
   if (customizations.cors) indexContent += `\nimport cors from 'cors'`;
   if (customizations.helmet) indexContent += `\nimport helmet from 'helmet'`;
-  indexContent += `\nimport routes from './routes/index.${ext}'`;
+  indexContent += `\nimport routes from './routes/index'`;
 
   indexContent += `\n\nconst app = express()
 const port = process.env.PORT || 3000
@@ -73,7 +74,7 @@ app.listen(port, () => {
 
   // Generate routes/index
   const routesContent = `import { Router } from 'express'
-import exampleRoutes from './example.${ext}'
+import exampleRoutes from './example'
 
 const router = Router()
 
@@ -85,7 +86,7 @@ export default router
 
   // Generate example route
   const exampleRouteContent = `import { Router } from 'express'
-import * as exampleController from '../controllers/example.${ext}'
+import * as exampleController from '../controllers/example'
 
 const router = Router()
 
@@ -104,7 +105,7 @@ export default router
 
   // Generate controller
   const controllerContent = `import { Request, Response } from 'express'
-import * as exampleModel from '../models/example.${ext}'
+import * as exampleModel from '../models/example'
 
 export const getAll = async (req: Request, res: Response) => {
   try {
@@ -221,7 +222,7 @@ async function generateRESTStructure(
   if (customizations.dotenv) indexContent += `\nimport 'dotenv/config'`;
   if (customizations.cors) indexContent += `\nimport cors from 'cors'`;
   if (customizations.helmet) indexContent += `\nimport helmet from 'helmet'`;
-  indexContent += `\nimport apiRoutes from './routes/api.${ext}'`;
+  indexContent += `\nimport apiRoutes from './routes/api'`;
 
   indexContent += `\n\nconst app = express()
 const port = process.env.PORT || 3000
@@ -242,7 +243,7 @@ app.listen(port, () => {
 
   // Generate API routes
   const apiRoutesContent = `import { Router } from 'express'
-import userRoutes from './users.${ext}'
+import userRoutes from './users'
 
 const router = Router()
 
@@ -254,7 +255,7 @@ export default router
 
   // Generate user routes
   const userRoutesContent = `import { Router } from 'express'
-import * as userController from '../controllers/user.${ext}'
+import * as userController from '../controllers/user'
 
 const router = Router()
 
@@ -270,7 +271,7 @@ export default router
 
   // Generate controller
   const controllerContent = `import { Request, Response } from 'express'
-import * as userService from '../services/user.${ext}'
+import * as userService from '../services/user'
 
 export const getUsers = async (req: Request, res: Response) => {
   try {
@@ -386,7 +387,7 @@ async function generateLayeredStructure(
   if (customizations.dotenv) indexContent += `\nimport 'dotenv/config'`;
   if (customizations.cors) indexContent += `\nimport cors from 'cors'`;
   if (customizations.helmet) indexContent += `\nimport helmet from 'helmet'`;
-  indexContent += `\nimport routes from './presentation/routes.${ext}'`;
+  indexContent += `\nimport routes from './presentation/routes'`;
 
   indexContent += `\n\nconst app = express()
 const port = process.env.PORT || 3000
@@ -407,7 +408,7 @@ app.listen(port, () => {
 
   // Generate presentation layer (routes)
   const routesContent = `import { Router } from 'express'
-import * as productController from './controllers/product.${ext}'
+import * as productController from './controllers/product'
 
 const router = Router()
 
@@ -426,7 +427,7 @@ export default router
 
   // Generate controller
   const controllerContent = `import { Request, Response } from 'express'
-import * as productService from '../business/product.${ext}'
+import * as productService from '../business/product'
 
 export const getProducts = async (req: Request, res: Response) => {
   try {
@@ -498,7 +499,7 @@ export const deleteProduct = async (req: Request, res: Response) => {
   );
 
   // Generate business layer
-  const businessContent = `import * as productRepository from '../data/product.${ext}'
+  const businessContent = `import * as productRepository from '../data/product'
 
 export const getAllProducts = async () => {
   return await productRepository.findAll()
@@ -574,7 +575,7 @@ async function generateSimpleStructure(
   if (customizations.dotenv) indexContent += `\nimport 'dotenv/config'`;
   if (customizations.cors) indexContent += `\nimport cors from 'cors'`;
   if (customizations.helmet) indexContent += `\nimport helmet from 'helmet'`;
-  indexContent += `\nimport routes from './routes/index.${ext}'`;
+  indexContent += `\nimport routes from './routes/index'`;
 
   indexContent += `\n\nconst app = express()
 const port = process.env.PORT || 3000
@@ -721,14 +722,22 @@ dist
       await writeFile(join(projectPath, ".gitignore"), gitignore);
 
       // Install dependencies
-      logger.info("Installing dependencies...");
+      const installSpinner = spinner();
+      installSpinner.start("Installing dependencies...");
       const installCommand =
-        packageManager === "pnpm"
-          ? "pnpm"
-          : packageManager === "yarn"
-            ? "yarn"
-            : "npm";
-      const installArgs = ["install"];
+        packageManager === "bun"
+          ? "bun"
+          : packageManager === "pnpm"
+            ? "pnpm"
+            : packageManager === "yarn"
+              ? "yarn"
+              : "npm";
+      const installArgs =
+        packageManager === "bun" ||
+        packageManager === "pnpm" ||
+        packageManager === "yarn"
+          ? ["add"]
+          : ["install", "--save"];
 
       const dependencies: string[] = ["express"];
 
@@ -754,29 +763,56 @@ dist
         dependencies.push("helmet");
       }
 
-      await exec(installCommand, [...installArgs, ...dependencies, "--save"], {
-        cwd: projectPath,
-        stdio: "inherit",
-      });
+      try {
+        await exec(installCommand, [...installArgs, ...dependencies], {
+          cwd: projectPath,
+          stdio: "inherit",
+        });
+        installSpinner.stop("Dependencies installed");
+      } catch (error) {
+        installSpinner.stop("Failed to install dependencies");
+        throw error;
+      }
 
       // Setup ESLint if requested
       if (customizations.eslint) {
-        logger.info("Setting up ESLint...");
-        await exec(
-          installCommand,
-          [
-            "add",
-            "-D",
-            "eslint",
-            "@typescript-eslint/parser",
-            "@typescript-eslint/eslint-plugin",
-            "eslint-plugin-node",
-          ],
-          { cwd: projectPath, stdio: "inherit" },
-        );
+        const eslintSpinner = spinner();
+        eslintSpinner.start("Setting up ESLint...");
+        try {
+          const eslintArgs =
+            packageManager === "bun"
+              ? [
+                  "add",
+                  "-d",
+                  "eslint",
+                  "@typescript-eslint/parser",
+                  "@typescript-eslint/eslint-plugin",
+                  "eslint-plugin-node",
+                ]
+              : packageManager === "pnpm" || packageManager === "yarn"
+                ? [
+                    "add",
+                    "-D",
+                    "eslint",
+                    "@typescript-eslint/parser",
+                    "@typescript-eslint/eslint-plugin",
+                    "eslint-plugin-node",
+                  ]
+                : [
+                    "install",
+                    "--save-dev",
+                    "eslint",
+                    "@typescript-eslint/parser",
+                    "@typescript-eslint/eslint-plugin",
+                    "eslint-plugin-node",
+                  ];
+          await exec(installCommand, eslintArgs, {
+            cwd: projectPath,
+            stdio: "inherit",
+          });
 
-        const eslintConfig = customizations.typescript
-          ? `module.exports = {
+          const eslintConfig = customizations.typescript
+            ? `module.exports = {
   parser: '@typescript-eslint/parser',
   extends: [
     'eslint:recommended',
@@ -793,7 +829,7 @@ dist
   },
   rules: {},
 };`
-          : `module.exports = {
+            : `module.exports = {
   extends: ['eslint:recommended', 'plugin:node/recommended'],
   env: {
     node: true,
@@ -802,30 +838,48 @@ dist
   rules: {},
 };`;
 
-        await writeFile(join(projectPath, ".eslintrc.js"), eslintConfig);
+          await writeFile(join(projectPath, ".eslintrc.js"), eslintConfig);
+          eslintSpinner.stop("ESLint configured");
+        } catch (error) {
+          eslintSpinner.stop("Failed to setup ESLint");
+          throw error;
+        }
       }
 
       // Setup Prettier if requested
       if (customizations.prettier) {
-        logger.info("Setting up Prettier...");
-        await exec(installCommand, ["add", "-D", "prettier"], {
-          cwd: projectPath,
-          stdio: "inherit",
-        });
+        const prettierSpinner = spinner();
+        prettierSpinner.start("Setting up Prettier...");
+        try {
+          const prettierArgs =
+            packageManager === "bun"
+              ? ["add", "-d", "prettier"]
+              : packageManager === "pnpm" || packageManager === "yarn"
+                ? ["add", "-D", "prettier"]
+                : ["install", "--save-dev", "prettier"];
+          await exec(installCommand, prettierArgs, {
+            cwd: projectPath,
+            stdio: "inherit",
+          });
 
-        const prettierConfig = `{
+          const prettierConfig = `{
   "semi": true,
   "singleQuote": false,
   "tabWidth": 2,
   "trailingComma": "es5"
 }`;
-        await writeFile(join(projectPath, ".prettierrc"), prettierConfig);
+          await writeFile(join(projectPath, ".prettierrc"), prettierConfig);
 
-        const prettierIgnore = `node_modules
+          const prettierIgnore = `node_modules
 dist
 build
 .coverage`;
-        await writeFile(join(projectPath, ".prettierignore"), prettierIgnore);
+          await writeFile(join(projectPath, ".prettierignore"), prettierIgnore);
+          prettierSpinner.stop("Prettier configured");
+        } catch (error) {
+          prettierSpinner.stop("Failed to setup Prettier");
+          throw error;
+        }
       }
 
       // Detect package manager from created project (after install creates lock file)

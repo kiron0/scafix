@@ -1,15 +1,16 @@
+import { spinner } from "@clack/prompts";
+import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
-import { writeFile, readFile } from "fs/promises";
+import { promptViteReactCustomizations } from "../prompts/customizations.js";
+import type { CreateOptions, StackAdapter } from "../types/stack.js";
 import { exec } from "../utils/exec.js";
 import { logger } from "../utils/logger.js";
-import { validateProjectName, validateDirectory } from "../utils/validate.js";
 import {
   detectPackageManager,
-  getInstallCommand,
   getDevCommand,
+  getInstallCommand,
 } from "../utils/package-manager.js";
-import { promptViteReactCustomizations } from "../prompts/customizations.js";
-import type { StackAdapter, CreateOptions } from "../types/stack.js";
+import { validateDirectory, validateProjectName } from "../utils/validate.js";
 
 export const viteReactAdapter: StackAdapter = {
   id: "vite-react",
@@ -48,100 +49,138 @@ export const viteReactAdapter: StackAdapter = {
 
       // Use npm create vite@latest to scaffold the project
       const createCommand =
-        packageManager === "pnpm"
-          ? "pnpm"
-          : packageManager === "yarn"
-            ? "yarn"
-            : "npm";
+        packageManager === "bun"
+          ? "bun"
+          : packageManager === "pnpm"
+            ? "pnpm"
+            : packageManager === "yarn"
+              ? "yarn"
+              : "npm";
       const createArgs =
-        packageManager === "pnpm"
+        packageManager === "bun"
           ? ["create", "vite@latest", directory, "--template", template]
-          : packageManager === "yarn"
+          : packageManager === "pnpm"
             ? ["create", "vite@latest", directory, "--template", template]
-            : ["create", "vite@latest", directory, "--", "--template", template];
+            : packageManager === "yarn"
+              ? ["create", "vite@latest", directory, "--template", template]
+              : ["create", "vite@latest", directory, "--template", template];
 
       // Run create command in current directory
-      await exec(createCommand, createArgs, {
-        cwd: process.cwd(),
-        stdio: "inherit",
-      });
+      // Note: We stop the spinner before running since stdio: "inherit" shows output directly
+      const createSpinner = spinner();
+      createSpinner.start("Creating Vite project...");
+      createSpinner.stop();
+
+      try {
+        await exec(createCommand, createArgs, {
+          cwd: process.cwd(),
+          stdio: "inherit",
+        });
+        logger.success("Vite project created");
+      } catch (error) {
+        logger.error("Failed to create Vite project");
+        throw error;
+      }
 
       // Apply customizations
       const detectedPm = detectPackageManager(projectPath);
       const installCommand =
-        detectedPm === "pnpm" ? "pnpm" : detectedPm === "yarn" ? "yarn" : "npm";
+        detectedPm === "bun"
+          ? "bun"
+          : detectedPm === "pnpm"
+            ? "pnpm"
+            : detectedPm === "yarn"
+              ? "yarn"
+              : "npm";
 
       // Install Tailwind CSS if requested
       if (customizations.tailwind) {
-        logger.info("Installing Tailwind CSS...");
-        if (customizations.tailwindVersion === "v4") {
-          // Tailwind v4
-          await exec(
-            installCommand,
-            ["add", "-D", "tailwindcss@next", "@tailwindcss/vite@next"],
-            { cwd: projectPath, stdio: "inherit" },
-          );
-        } else {
-          // Tailwind v3
-          await exec(
-            installCommand,
-            ["add", "-D", "tailwindcss", "postcss", "autoprefixer"],
-            { cwd: projectPath, stdio: "inherit" },
-          );
+        const tailwindSpinner = spinner();
+        tailwindSpinner.start("Installing Tailwind CSS...");
+        try {
+          if (customizations.tailwindVersion === "v4") {
+            // Tailwind v4
+            await exec(
+              installCommand,
+              ["add", "-D", "tailwindcss@next", "@tailwindcss/vite@next"],
+              { cwd: projectPath, stdio: "inherit" },
+            );
+          } else {
+            // Tailwind v3
+            await exec(
+              installCommand,
+              ["add", "-D", "tailwindcss", "postcss", "autoprefixer"],
+              { cwd: projectPath, stdio: "inherit" },
+            );
+          }
+          tailwindSpinner.stop("Tailwind CSS installed");
+        } catch (error) {
+          tailwindSpinner.stop("Failed to install Tailwind CSS");
+          throw error;
         }
       }
 
       // Install shadcn/ui if requested
       if (customizations.shadcn && customizations.tailwind) {
-        logger.info("Setting up shadcn/ui...");
-        // Install shadcn/ui dependencies
-        await exec(
-          installCommand,
-          ["add", "class-variance-authority", "clsx", "tailwind-merge"],
-          { cwd: projectPath, stdio: "inherit" },
-        );
-
-        if (customizations.typescript) {
+        const shadcnSpinner = spinner();
+        shadcnSpinner.start("Setting up shadcn/ui...");
+        try {
+          // Install shadcn/ui dependencies
           await exec(
             installCommand,
-            ["add", "-D", "@types/node"],
+            ["add", "class-variance-authority", "clsx", "tailwind-merge"],
             { cwd: projectPath, stdio: "inherit" },
           );
-        }
 
-        // Initialize shadcn/ui
-        const shadcnInitArgs = [
-          "init",
-          "-y",
-          "-d",
-          customizations.shadcnOptions?.style === "new-york"
-            ? "src/lib/utils.ts"
-            : "src/lib/utils.ts",
-        ];
+          if (customizations.typescript) {
+            await exec(installCommand, ["add", "-D", "@types/node"], {
+              cwd: projectPath,
+              stdio: "inherit",
+            });
+          }
 
-        if (customizations.shadcnOptions?.baseColor) {
-          shadcnInitArgs.push("-c", customizations.shadcnOptions.baseColor);
-        }
+          // Initialize shadcn/ui
+          const shadcnInitArgs = [
+            "init",
+            "-y",
+            "-d",
+            customizations.shadcnOptions?.style === "new-york"
+              ? "src/lib/utils.ts"
+              : "src/lib/utils.ts",
+          ];
 
-        if (customizations.shadcnOptions?.cssVariables === false) {
-          shadcnInitArgs.push("--no-css-vars");
-        }
+          if (customizations.shadcnOptions?.baseColor) {
+            shadcnInitArgs.push("-c", customizations.shadcnOptions.baseColor);
+          }
 
-        await exec("npx", ["shadcn@latest", ...shadcnInitArgs], {
-          cwd: projectPath,
-          stdio: "inherit",
-        });
+          if (customizations.shadcnOptions?.cssVariables === false) {
+            shadcnInitArgs.push("--no-css-vars");
+          }
 
-        // Install selected components
-        if (
-          customizations.shadcnOptions?.components &&
-          customizations.shadcnOptions.components.length > 0
-        ) {
-          await exec(
-            "npx",
-            ["shadcn@latest", "add", ...customizations.shadcnOptions.components],
-            { cwd: projectPath, stdio: "inherit" },
-          );
+          await exec("npx", ["shadcn@latest", ...shadcnInitArgs], {
+            cwd: projectPath,
+            stdio: "inherit",
+          });
+
+          // Install selected components
+          if (
+            customizations.shadcnOptions?.components &&
+            customizations.shadcnOptions.components.length > 0
+          ) {
+            await exec(
+              "npx",
+              [
+                "shadcn@latest",
+                "add",
+                ...customizations.shadcnOptions.components,
+              ],
+              { cwd: projectPath, stdio: "inherit" },
+            );
+          }
+          shadcnSpinner.stop("shadcn/ui setup complete");
+        } catch (error) {
+          shadcnSpinner.stop("Failed to setup shadcn/ui");
+          throw error;
         }
       }
 
@@ -172,14 +211,17 @@ export const viteReactAdapter: StackAdapter = {
           await writeFile(cssPath, cssContent);
         } else {
           // Tailwind v3 - initialize config
-          await exec("npx", ["tailwindcss", "init", "-p"], {
-            cwd: projectPath,
-            stdio: "inherit",
-          });
+          const tailwindConfigSpinner = spinner();
+          tailwindConfigSpinner.start("Configuring Tailwind CSS...");
+          try {
+            await exec("npx", ["tailwindcss", "init", "-p"], {
+              cwd: projectPath,
+              stdio: "inherit",
+            });
 
-          // Update tailwind.config
-          const tailwindConfigPath = join(projectPath, "tailwind.config.js");
-          const tailwindConfig = `/** @type {import('tailwindcss').Config} */
+            // Update tailwind.config
+            const tailwindConfigPath = join(projectPath, "tailwind.config.js");
+            const tailwindConfig = `/** @type {import('tailwindcss').Config} */
 export default {
   content: [
     "./index.html",
@@ -190,45 +232,53 @@ export default {
   },
   plugins: [],
 }`;
-          await writeFile(tailwindConfigPath, tailwindConfig);
+            await writeFile(tailwindConfigPath, tailwindConfig);
 
-          // Add Tailwind directives to CSS
-          const cssPath = join(projectPath, "src", "index.css");
-          let cssContent = await readFile(cssPath, "utf-8");
-          cssContent = `@tailwind base;
+            // Add Tailwind directives to CSS
+            const cssPath = join(projectPath, "src", "index.css");
+            let cssContent = await readFile(cssPath, "utf-8");
+            cssContent = `@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 ${cssContent}`;
-          await writeFile(cssPath, cssContent);
+            await writeFile(cssPath, cssContent);
+            tailwindConfigSpinner.stop("Tailwind CSS configured");
+          } catch (error) {
+            tailwindConfigSpinner.stop("Failed to configure Tailwind CSS");
+            throw error;
+          }
         }
       }
 
       // Add Prettier if requested
       if (customizations.prettier) {
-        logger.info("Setting up Prettier...");
-        await exec(
-          installCommand,
-          ["add", "-D", "prettier"],
-          { cwd: projectPath, stdio: "inherit" },
-        );
+        const prettierSpinner = spinner();
+        prettierSpinner.start("Setting up Prettier...");
+        try {
+          await exec(installCommand, ["add", "-D", "prettier"], {
+            cwd: projectPath,
+            stdio: "inherit",
+          });
 
-        const prettierConfig = `{
+          const prettierConfig = `{
   "semi": true,
   "singleQuote": false,
   "tabWidth": 2,
   "trailingComma": "es5"
 }`;
-        await writeFile(
-          join(projectPath, ".prettierrc"),
-          prettierConfig,
-        );
+          await writeFile(join(projectPath, ".prettierrc"), prettierConfig);
 
-        const prettierIgnore = `node_modules
+          const prettierIgnore = `node_modules
 dist
 build
 .coverage`;
-        await writeFile(join(projectPath, ".prettierignore"), prettierIgnore);
+          await writeFile(join(projectPath, ".prettierignore"), prettierIgnore);
+          prettierSpinner.stop("Prettier configured");
+        } catch (error) {
+          prettierSpinner.stop("Failed to setup Prettier");
+          throw error;
+        }
       }
 
       logger.success(`Project ${projectName} created successfully!`);

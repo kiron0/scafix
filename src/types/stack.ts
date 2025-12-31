@@ -1,29 +1,29 @@
 export interface CreateOptions {
-  projectName: string
-  directory?: string
-  packageManager?: 'npm' | 'pnpm' | 'yarn'
-  typescript?: boolean
-  eslint?: boolean
-  prettier?: boolean
-  git?: boolean
-  [key: string]: unknown // Allow stack-specific options
+  projectName: string;
+  directory?: string;
+  packageManager?: "npm" | "pnpm" | "yarn" | "bun";
+  typescript?: boolean;
+  eslint?: boolean;
+  prettier?: boolean;
+  git?: boolean;
+  [key: string]: unknown; // Allow stack-specific options
 }
 
 export interface StackAdapter {
-  id: string
-  name: string
-  description: string
-  backend?: boolean
+  id: string;
+  name: string;
+  description: string;
+  backend?: boolean;
 
-  detect?: () => boolean
-  create(options: CreateOptions): Promise<void>
+  detect?: () => boolean;
+  create(options: CreateOptions): Promise<void>;
 }
 
 export interface CliOptions {
-  yes?: boolean
-  debug?: boolean
-  help?: boolean
-  version?: boolean
-  git?: boolean
-  [key: string]: unknown
+  yes?: boolean;
+  debug?: boolean;
+  help?: boolean;
+  version?: boolean;
+  git?: boolean;
+  [key: string]: unknown;
 }

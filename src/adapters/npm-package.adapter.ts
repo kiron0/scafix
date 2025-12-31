@@ -1,3 +1,4 @@
+import { spinner } from "@clack/prompts";
 import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import { promptNpmPackageCustomizations } from "../prompts/customizations.js";
@@ -325,13 +326,16 @@ coverage
       await writeFile(join(projectPath, ".npmignore"), npmignore);
 
       // Install dependencies
-      logger.info("Installing dependencies...");
+      const installSpinner = spinner();
+      installSpinner.start("Installing dependencies...");
       const installCommand =
-        packageManager === "pnpm"
-          ? "pnpm"
-          : packageManager === "yarn"
-            ? "yarn"
-            : "npm";
+        packageManager === "bun"
+          ? "bun"
+          : packageManager === "pnpm"
+            ? "pnpm"
+            : packageManager === "yarn"
+              ? "yarn"
+              : "npm";
       const installArgs = ["install"];
 
       const devDependencies: string[] = [];
@@ -371,39 +375,51 @@ coverage
         }
       }
 
-      // Install dev dependencies
-      if (devDependencies.length > 0) {
-        const devInstallArgs =
-          installCommand === "pnpm"
-            ? ["add", "-D", ...devDependencies]
-            : installCommand === "yarn"
-              ? ["add", "-D", ...devDependencies]
-              : ["install", "--save-dev", ...devDependencies];
-        await exec(installCommand, devInstallArgs, {
-          cwd: projectPath,
-          stdio: "inherit",
-        });
-      }
+      try {
+        // Install dev dependencies
+        if (devDependencies.length > 0) {
+          const devInstallArgs =
+            installCommand === "bun"
+              ? ["add", "-d", ...devDependencies]
+              : installCommand === "pnpm"
+                ? ["add", "-D", ...devDependencies]
+                : installCommand === "yarn"
+                  ? ["add", "-D", ...devDependencies]
+                  : ["install", "--save-dev", ...devDependencies];
+          await exec(installCommand, devInstallArgs, {
+            cwd: projectPath,
+            stdio: "inherit",
+          });
+        }
 
-      // Install regular dependencies if any
-      if (dependencies.length > 0) {
-        const prodInstallArgs =
-          installCommand === "pnpm"
-            ? ["add", ...dependencies]
-            : installCommand === "yarn"
+        // Install regular dependencies if any
+        if (dependencies.length > 0) {
+          const prodInstallArgs =
+            installCommand === "bun"
               ? ["add", ...dependencies]
-              : ["install", "--save", ...dependencies];
-        await exec(installCommand, prodInstallArgs, {
-          cwd: projectPath,
-          stdio: "inherit",
-        });
+              : installCommand === "pnpm"
+                ? ["add", ...dependencies]
+                : installCommand === "yarn"
+                  ? ["add", ...dependencies]
+                  : ["install", "--save", ...dependencies];
+          await exec(installCommand, prodInstallArgs, {
+            cwd: projectPath,
+            stdio: "inherit",
+          });
+        }
+        installSpinner.stop("Dependencies installed");
+      } catch (error) {
+        installSpinner.stop("Failed to install dependencies");
+        throw error;
       }
 
       // Setup ESLint if requested
       if (customizations.eslint) {
-        logger.info("Setting up ESLint...");
-        const eslintConfig = customizations.typescript
-          ? `module.exports = {
+        const eslintSpinner = spinner();
+        eslintSpinner.start("Setting up ESLint...");
+        try {
+          const eslintConfig = customizations.typescript
+            ? `module.exports = {
   parser: '@typescript-eslint/parser',
   extends: [
     'eslint:recommended',
@@ -419,7 +435,7 @@ coverage
   },
   rules: {},
 };`
-          : `module.exports = {
+            : `module.exports = {
   extends: ['eslint:recommended'],
   env: {
     node: true,
@@ -428,35 +444,49 @@ coverage
   rules: {},
 };`;
 
-        await writeFile(join(projectPath, ".eslintrc.js"), eslintConfig);
+          await writeFile(join(projectPath, ".eslintrc.js"), eslintConfig);
+          eslintSpinner.stop("ESLint configured");
+        } catch (error) {
+          eslintSpinner.stop("Failed to setup ESLint");
+          throw error;
+        }
       }
 
       // Setup Prettier if requested
       if (customizations.prettier) {
-        logger.info("Setting up Prettier...");
-        const prettierConfig = `{
+        const prettierSpinner = spinner();
+        prettierSpinner.start("Setting up Prettier...");
+        try {
+          const prettierConfig = `{
   "semi": true,
   "singleQuote": false,
   "tabWidth": 2,
   "trailingComma": "es5"
 }`;
-        await writeFile(join(projectPath, ".prettierrc"), prettierConfig);
+          await writeFile(join(projectPath, ".prettierrc"), prettierConfig);
 
-        const prettierIgnore = `node_modules
+          const prettierIgnore = `node_modules
 dist
 coverage
 .nyc_output`;
-        await writeFile(join(projectPath, ".prettierignore"), prettierIgnore);
+          await writeFile(join(projectPath, ".prettierignore"), prettierIgnore);
+          prettierSpinner.stop("Prettier configured");
+        } catch (error) {
+          prettierSpinner.stop("Failed to setup Prettier");
+          throw error;
+        }
       }
 
       // Setup tests if requested
       if (customizations.tests) {
-        logger.info("Setting up tests...");
-        const testFile = customizations.typescript
-          ? "index.test.ts"
-          : "index.test.js";
-        const testContent = customizations.typescript
-          ? `import { describe, it, expect } from 'vitest';
+        const testsSpinner = spinner();
+        testsSpinner.start("Setting up tests...");
+        try {
+          const testFile = customizations.typescript
+            ? "index.test.ts"
+            : "index.test.js";
+          const testContent = customizations.typescript
+            ? `import { describe, it, expect } from 'vitest';
 import { greet } from './index.js';
 
 describe('greet', () => {
@@ -465,7 +495,7 @@ describe('greet', () => {
   });
 });
 `
-          : `import { describe, it, expect } from 'vitest';
+            : `import { describe, it, expect } from 'vitest';
 import { greet } from './index.js';
 
 describe('greet', () => {
@@ -475,15 +505,17 @@ describe('greet', () => {
 });
 `;
 
-        await mkdir(join(projectPath, "src", "__tests__"), { recursive: true });
-        await writeFile(
-          join(projectPath, "src", "__tests__", testFile),
-          testContent,
-        );
+          await mkdir(join(projectPath, "src", "__tests__"), {
+            recursive: true,
+          });
+          await writeFile(
+            join(projectPath, "src", "__tests__", testFile),
+            testContent,
+          );
 
-        // Create vitest config
-        const vitestConfig = customizations.typescript
-          ? `import { defineConfig } from 'vitest/config';
+          // Create vitest config
+          const vitestConfig = customizations.typescript
+            ? `import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
@@ -492,7 +524,7 @@ export default defineConfig({
   },
 });
 `
-          : `import { defineConfig } from 'vitest/config';
+            : `import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
@@ -502,7 +534,12 @@ export default defineConfig({
 });
 `;
 
-        await writeFile(join(projectPath, "vitest.config.ts"), vitestConfig);
+          await writeFile(join(projectPath, "vitest.config.ts"), vitestConfig);
+          testsSpinner.stop("Tests configured");
+        } catch (error) {
+          testsSpinner.stop("Failed to setup tests");
+          throw error;
+        }
       }
 
       // Detect package manager from created project
@@ -514,16 +551,16 @@ export default defineConfig({
       logger.info(`  ${getInstallCommand(detectedPm)}`);
       if (customizations.typescript) {
         logger.info(
-          `  ${detectedPm === "pnpm" ? "pnpm" : detectedPm === "yarn" ? "yarn" : "npm"} run build`,
+          `  ${detectedPm === "bun" ? "bun" : detectedPm === "pnpm" ? "pnpm" : detectedPm === "yarn" ? "yarn" : "npm"} run build`,
         );
       }
       if (customizations.tests) {
         logger.info(
-          `  ${detectedPm === "pnpm" ? "pnpm" : detectedPm === "yarn" ? "yarn" : "npm"} test`,
+          `  ${detectedPm === "bun" ? "bun" : detectedPm === "pnpm" ? "pnpm" : detectedPm === "yarn" ? "yarn" : "npm"} test`,
         );
       }
       logger.info(
-        `  ${detectedPm === "pnpm" ? "pnpm" : detectedPm === "yarn" ? "yarn" : "npm"} publish`,
+        `  ${detectedPm === "bun" ? "bun" : detectedPm === "pnpm" ? "pnpm" : detectedPm === "yarn" ? "yarn" : "npm"} publish`,
       );
     } catch (error) {
       logger.error(

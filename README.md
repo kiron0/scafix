@@ -25,6 +25,7 @@ npx scafix
 ```
 
 This will prompt you to:
+
 1. Select a stack
 2. Enter a project name
 3. Choose a directory
