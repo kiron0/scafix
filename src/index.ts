@@ -49,7 +49,6 @@ program
     if (stack) {
       await createCommand(stack, options);
     } else {
-      // If no stack provided, fall back to interactive mode
       await initCommand(options);
     }
   });

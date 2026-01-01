@@ -1,5 +1,5 @@
 import { spinner } from "@clack/prompts";
-import { readFile, writeFile } from "fs/promises";
+import { access, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { promptViteReactCustomizations } from "../prompts/customizations.js";
 import type { CreateOptions, StackAdapter } from "../types/stack.js";
@@ -11,6 +11,115 @@ import {
   getInstallCommand,
 } from "../utils/package-manager.js";
 import { validateDirectory, validateProjectName } from "../utils/validate.js";
+
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function ensureViteTsconfigAlias(
+  projectPath: string,
+  typescript: boolean,
+): Promise<void> {
+  const configPath = typescript
+    ? (await fileExists(join(projectPath, "tsconfig.app.json")))
+      ? join(projectPath, "tsconfig.app.json")
+      : join(projectPath, "tsconfig.json")
+    : join(projectPath, "jsconfig.json");
+
+  let config: Record<string, unknown> = {};
+  if (await fileExists(configPath)) {
+    const raw = await readFile(configPath, "utf-8");
+    config = JSON.parse(raw);
+  }
+
+  const compilerOptions =
+    (config.compilerOptions as Record<string, unknown> | undefined) ?? {};
+  if (!compilerOptions.baseUrl) {
+    compilerOptions.baseUrl = ".";
+  }
+  const paths =
+    (compilerOptions.paths as Record<string, string[] | undefined>) ?? {};
+  if (!paths["@/*"]) {
+    paths["@/*"] = ["./src/*"];
+  }
+  compilerOptions.paths = paths;
+  config.compilerOptions = compilerOptions;
+
+  await writeFile(configPath, JSON.stringify(config, null, 2));
+}
+
+async function updateViteConfig(
+  projectPath: string,
+  typescript: boolean,
+  options: { addTailwindPlugin?: boolean; addAlias?: boolean },
+): Promise<void> {
+  const viteConfigPath = join(
+    projectPath,
+    typescript ? "vite.config.ts" : "vite.config.js",
+  );
+  let viteConfig = await readFile(viteConfigPath, "utf-8");
+
+  if (options.addTailwindPlugin && !viteConfig.includes("@tailwindcss/vite")) {
+    const importsMatch = viteConfig.match(/^(import[^\n]*\n)+/m);
+    if (importsMatch) {
+      viteConfig = viteConfig.replace(
+        importsMatch[0],
+        `${importsMatch[0]}import tailwindcss from "@tailwindcss/vite";\n`,
+      );
+    } else {
+      viteConfig = `import tailwindcss from "@tailwindcss/vite";\n${viteConfig}`;
+    }
+  }
+
+  if (
+    options.addAlias &&
+    !viteConfig.includes('from "path"') &&
+    !viteConfig.includes("from 'path'")
+  ) {
+    const importsMatch = viteConfig.match(/^(import[^\n]*\n)+/m);
+    if (importsMatch) {
+      viteConfig = viteConfig.replace(
+        importsMatch[0],
+        `${importsMatch[0]}import path from "path";\n`,
+      );
+    } else {
+      viteConfig = `import path from "path";\n${viteConfig}`;
+    }
+  }
+
+  if (options.addTailwindPlugin && !viteConfig.includes("tailwindcss()")) {
+    const pluginsMatch = viteConfig.match(/plugins:\s*\[([\s\S]*?)\]/);
+    if (pluginsMatch) {
+      const pluginsBody = pluginsMatch[1].trim();
+      const separator = pluginsBody.length > 0 && !pluginsBody.endsWith(",")
+        ? ", "
+        : pluginsBody.length > 0
+          ? " "
+          : "";
+      const updatedPluginsBody = `${pluginsBody}${separator}tailwindcss()`;
+      viteConfig = viteConfig.replace(
+        pluginsMatch[0],
+        `plugins: [${updatedPluginsBody}]`,
+      );
+    }
+  }
+
+  if (options.addAlias && !viteConfig.includes("alias")) {
+    if (viteConfig.includes("defineConfig({")) {
+      viteConfig = viteConfig.replace(
+        "defineConfig({",
+        `defineConfig({\n  resolve: {\n    alias: {\n      "@": path.resolve(__dirname, "./src"),\n    },\n  },`,
+      );
+    }
+  }
+
+  await writeFile(viteConfigPath, viteConfig);
+}
 
 export const viteReactAdapter: StackAdapter = {
   id: "vite-react",
@@ -120,85 +229,13 @@ export const viteReactAdapter: StackAdapter = {
         }
       }
 
-      // Install shadcn/ui if requested
-      if (customizations.shadcn && customizations.tailwind) {
-        const shadcnSpinner = spinner();
-        shadcnSpinner.start("Setting up shadcn/ui...");
-        try {
-          // Install shadcn/ui dependencies
-          await exec(
-            installCommand,
-            ["add", "class-variance-authority", "clsx", "tailwind-merge"],
-            { cwd: projectPath, stdio: "inherit" },
-          );
-
-          if (customizations.typescript) {
-            await exec(installCommand, ["add", "-D", "@types/node"], {
-              cwd: projectPath,
-              stdio: "inherit",
-            });
-          }
-
-          // Initialize shadcn/ui
-          const shadcnInitArgs = [
-            "init",
-            "-y",
-            "-d",
-            customizations.shadcnOptions?.style === "new-york"
-              ? "src/lib/utils.ts"
-              : "src/lib/utils.ts",
-          ];
-
-          if (customizations.shadcnOptions?.baseColor) {
-            shadcnInitArgs.push("-c", customizations.shadcnOptions.baseColor);
-          }
-
-          if (customizations.shadcnOptions?.cssVariables === false) {
-            shadcnInitArgs.push("--no-css-vars");
-          }
-
-          await exec("npx", ["shadcn@latest", ...shadcnInitArgs], {
-            cwd: projectPath,
-            stdio: "inherit",
-          });
-
-          // Install selected components
-          if (
-            customizations.shadcnOptions?.components &&
-            customizations.shadcnOptions.components.length > 0
-          ) {
-            await exec(
-              "npx",
-              [
-                "shadcn@latest",
-                "add",
-                ...customizations.shadcnOptions.components,
-              ],
-              { cwd: projectPath, stdio: "inherit" },
-            );
-          }
-          shadcnSpinner.stop("shadcn/ui setup complete");
-        } catch (error) {
-          shadcnSpinner.stop("Failed to setup shadcn/ui");
-          throw error;
-        }
-      }
-
       // Configure Tailwind if added
       if (customizations.tailwind) {
         if (customizations.tailwindVersion === "v4") {
           // Tailwind v4 configuration
-          const viteConfigPath = join(projectPath, "vite.config.ts");
-          let viteConfig = await readFile(viteConfigPath, "utf-8");
-          viteConfig = viteConfig.replace(
-            /import\s+.*from\s+['"]vite['"]/,
-            `import { defineConfig } from 'vite'\nimport tailwindcss from '@tailwindcss/vite'`,
-          );
-          viteConfig = viteConfig.replace(
-            /export\s+default\s+defineConfig\(/,
-            `export default defineConfig({\n  plugins: [tailwindcss()],`,
-          );
-          await writeFile(viteConfigPath, viteConfig);
+          await updateViteConfig(projectPath, customizations.typescript, {
+            addTailwindPlugin: true,
+          });
 
           // Add Tailwind directives to CSS
           const cssPath = join(
@@ -248,6 +285,54 @@ ${cssContent}`;
             tailwindConfigSpinner.stop("Failed to configure Tailwind CSS");
             throw error;
           }
+        }
+      }
+
+      // Install shadcn/ui if requested
+      if (customizations.shadcn && customizations.tailwind) {
+        const shadcnSpinner = spinner();
+        shadcnSpinner.start("Setting up shadcn/ui...");
+        try {
+          if (customizations.typescript) {
+            await exec(installCommand, ["add", "-D", "@types/node"], {
+              cwd: projectPath,
+              stdio: "inherit",
+            });
+          }
+
+          await ensureViteTsconfigAlias(
+            projectPath,
+            customizations.typescript,
+          );
+          await updateViteConfig(projectPath, customizations.typescript, {
+            addAlias: true,
+          });
+
+          // Initialize shadcn/ui
+          await exec("npx", ["shadcn@latest", "init"], {
+            cwd: projectPath,
+            stdio: "inherit",
+          });
+
+          // Install selected components
+          if (
+            customizations.shadcnOptions?.components &&
+            customizations.shadcnOptions.components.length > 0
+          ) {
+            await exec(
+              "npx",
+              [
+                "shadcn@latest",
+                "add",
+                ...customizations.shadcnOptions.components,
+              ],
+              { cwd: projectPath, stdio: "inherit" },
+            );
+          }
+          shadcnSpinner.stop("shadcn/ui setup complete");
+        } catch (error) {
+          shadcnSpinner.stop("Failed to setup shadcn/ui");
+          throw error;
         }
       }
 

@@ -131,37 +131,8 @@ export const nextAdapter: StackAdapter = {
         const shadcnSpinner = spinner();
         shadcnSpinner.start("Setting up shadcn/ui...");
         try {
-          // Install shadcn/ui dependencies
-          await exec(
-            installCommand,
-            ["add", "class-variance-authority", "clsx", "tailwind-merge"],
-            { cwd: projectPath, stdio: "inherit" },
-          );
-
-          if (customizations.typescript) {
-            await exec(installCommand, ["add", "-D", "@types/node"], {
-              cwd: projectPath,
-              stdio: "inherit",
-            });
-          }
-
           // Initialize shadcn/ui
-          const shadcnInitArgs = [
-            "init",
-            "-y",
-            "-d",
-            customizations.srcDir ? "src/components/ui" : "components/ui",
-          ];
-
-          if (customizations.shadcnOptions?.baseColor) {
-            shadcnInitArgs.push("-c", customizations.shadcnOptions.baseColor);
-          }
-
-          if (customizations.shadcnOptions?.cssVariables === false) {
-            shadcnInitArgs.push("--no-css-vars");
-          }
-
-          await exec("npx", ["shadcn@latest", ...shadcnInitArgs], {
+          await exec("npx", ["shadcn@latest", "init"], {
             cwd: projectPath,
             stdio: "inherit",
           });
