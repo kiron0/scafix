@@ -39,7 +39,6 @@ export async function createCommand(
     if (!projectName) {
       projectName = (await promptProjectName({ yes: options.yes })) as string;
       if (!projectName) {
-        logger.warn("Project creation cancelled");
         process.exit(0);
       }
     }
@@ -62,7 +61,10 @@ export async function createCommand(
     // Check if directory exists
     const dirInfo = validateDirectory(directory);
     if (dirInfo.exists) {
-      logger.error(`Directory ${directory} already exists`);
+      logger.warn(`The directory "${directory}" already exists.`);
+      logger.info(
+        `Please choose a different project name or remove the existing directory.`,
+      );
       process.exit(1);
     }
 

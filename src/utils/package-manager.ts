@@ -12,7 +12,7 @@ export function detectPackageManager(directory: string): PackageManager {
   const dir = resolve(directory);
 
   // Check for bun.lock
-  if (existsSync(join(dir, "bun.lock"))) {
+  if (existsSync(join(dir, "bun.lock")) || existsSync(join(dir, "bun.lockb"))) {
     return "bun";
   }
 
@@ -75,17 +75,4 @@ export function getDevCommand(pm: PackageManager): string {
       : pm === "yarn"
         ? "yarn dev"
         : "npm run dev";
-}
-
-/**
- * Gets the run command for a package manager
- */
-export function getRunCommand(pm: PackageManager, script: string): string {
-  return pm === "bun"
-    ? `bun ${script}`
-    : pm === "pnpm"
-      ? `pnpm ${script}`
-      : pm === "yarn"
-        ? `yarn ${script}`
-        : `npm run ${script}`;
 }

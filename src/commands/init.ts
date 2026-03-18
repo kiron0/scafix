@@ -17,7 +17,6 @@ export async function initCommand(options: CliOptions = {}): Promise<void> {
   try {
     const adapter = await selectStack(adapters, { yes: options.yes });
     if (!adapter) {
-      logger.warn("Stack selection cancelled");
       process.exit(0);
     }
 
@@ -27,7 +26,6 @@ export async function initCommand(options: CliOptions = {}): Promise<void> {
     // Prompt for project name
     const projectName = await promptProjectName({ yes: options.yes });
     if (!projectName) {
-      logger.warn("Project creation cancelled");
       process.exit(0);
     }
 

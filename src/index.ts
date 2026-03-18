@@ -1,31 +1,21 @@
 import * as p from "@clack/prompts";
 import chalk from "chalk";
 import { Command } from "commander";
-import { readFileSync } from "fs";
-import { dirname, join } from "path";
-import * as process from "process";
-import { fileURLToPath } from "url";
 import { createCommand } from "./commands/create.js";
 import { initCommand } from "./commands/init.js";
+import { APP_CONFIG } from "./config/index.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const packageJson = JSON.parse(
-  readFileSync(join(__dirname, "..", "package.json"), "utf-8"),
-);
-
-function getPackageVersion(): string {
-  return packageJson.version;
-}
+process.on("SIGINT", () => {
+  console.log("\n" + chalk.cyan(APP_CONFIG.thankYouMessage));
+  process.exit(0);
+});
 
 const program = new Command();
 
 program
-  .name("scafix")
-  .description(
-    "A universal scaffolding CLI that initializes modern application stacks",
-  )
-  .version(packageJson.version);
+  .name(APP_CONFIG.name)
+  .description(APP_CONFIG.description)
+  .version(APP_CONFIG.version);
 
 program
   .command("create")
@@ -77,12 +67,10 @@ program.action(async (options) => {
   }
 
   if (process.stdin.isTTY) {
-    const version = getPackageVersion();
-    p.intro(chalk.cyan.bold(`Scafix CLI v${version}`));
-    p.note(
-      "A universal scaffolding CLI that initializes modern application stacks through a single, consistent interface.",
-      "About",
+    p.intro(
+      chalk.cyan.bold(`${APP_CONFIG.displayName} CLI v${APP_CONFIG.version}`),
     );
+    p.note(APP_CONFIG.description, "About");
   }
 
   await initCommand(options);

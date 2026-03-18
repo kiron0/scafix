@@ -53,6 +53,135 @@ async function ensureViteTsconfigAlias(
   await writeFile(configPath, JSON.stringify(config, null, 2));
 }
 
+async function writeShadcnStyles(
+  projectPath: string,
+  style: "default" | "new-york" = "default",
+): Promise<void> {
+  const cssPath = join(projectPath, "src", "index.css");
+
+  // Theme tokens mirror the shadcn/ui defaults and bump the radius slightly
+  // when the New York style is selected.
+  const radius = style === "new-york" ? "0.75rem" : "0.5rem";
+  const cssContent = `@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --muted: 210 16% 96%;
+    --muted-foreground: 215 16% 46.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --ring: 215 20% 65.1%;
+    --radius: ${radius};
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --ring: 215 20.2% 65.1%;
+    --radius: ${radius};
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    font-variant-ligatures: common-ligatures;
+  }
+}
+`;
+
+  await writeFile(cssPath, cssContent);
+}
+
+async function updateViteAppExample(
+  projectPath: string,
+  typescript: boolean,
+  useShadcnExample: boolean,
+): Promise<void> {
+  if (!useShadcnExample) {
+    return;
+  }
+
+  const appPath = join(projectPath, "src", `App.${typescript ? "tsx" : "jsx"}`);
+  const current = await readFile(appPath, "utf-8");
+
+  // Only replace the default template to avoid clobbering user edits.
+  if (!current.includes("Vite + React")) {
+    return;
+  }
+
+  const appContent = `import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+
+function App() {
+  return (
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-4">
+      <Card className="w-full max-w-xl shadow-sm">
+        <CardHeader>
+          <CardTitle>Scafix starter</CardTitle>
+          <CardDescription>
+            Vite + React + Tailwind CSS v4 with shadcn/ui (New York)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Tailwind, CSS variables, and component aliases are preconfigured.
+          </p>
+          <div className="flex gap-3">
+            <Button>Primary</Button>
+            <Button variant="outline">Secondary</Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export default App;
+`;
+
+  await writeFile(appPath, appContent);
+}
+
 async function updateViteConfig(
   projectPath: string,
   typescript: boolean,
@@ -96,11 +225,12 @@ async function updateViteConfig(
     const pluginsMatch = viteConfig.match(/plugins:\s*\[([\s\S]*?)\]/);
     if (pluginsMatch) {
       const pluginsBody = pluginsMatch[1].trim();
-      const separator = pluginsBody.length > 0 && !pluginsBody.endsWith(",")
-        ? ", "
-        : pluginsBody.length > 0
-          ? " "
-          : "";
+      const separator =
+        pluginsBody.length > 0 && !pluginsBody.endsWith(",")
+          ? ", "
+          : pluginsBody.length > 0
+            ? " "
+            : "";
       const updatedPluginsBody = `${pluginsBody}${separator}tailwindcss()`;
       viteConfig = viteConfig.replace(
         pluginsMatch[0],
@@ -113,12 +243,45 @@ async function updateViteConfig(
     if (viteConfig.includes("defineConfig({")) {
       viteConfig = viteConfig.replace(
         "defineConfig({",
-        `defineConfig({\n  resolve: {\n    alias: {\n      "@": path.resolve(__dirname, "./src"),\n    },\n  },`,
+        `defineConfig({\n  resolve: {\n    alias: {\n      "@": path.resolve(process.cwd(), "./src"),\n    },\n  },`,
       );
     }
   }
 
   await writeFile(viteConfigPath, viteConfig);
+}
+
+async function setupPrettier(
+  projectPath: string,
+  installCommand: string,
+): Promise<void> {
+  const prettierArgs =
+    installCommand === "npm"
+      ? ["install", "--save-dev", "prettier"]
+      : installCommand === "bun"
+        ? ["add", "-d", "prettier"]
+        : ["add", "-D", "prettier"];
+
+  await exec(installCommand, prettierArgs, {
+    cwd: projectPath,
+    stdio: "inherit",
+  });
+
+  const prettierConfig = `{
+  "singleQuote": false,
+  "semi": true,
+  "tabWidth": 2,
+  "trailingComma": "es5"
+}
+`;
+  const prettierIgnore = `node_modules
+dist
+build
+.coverage
+`;
+
+  await writeFile(join(projectPath, ".prettierrc"), prettierConfig);
+  await writeFile(join(projectPath, ".prettierignore"), prettierIgnore);
 }
 
 export const viteReactAdapter: StackAdapter = {
@@ -142,7 +305,11 @@ export const viteReactAdapter: StackAdapter = {
     const dirInfo = validateDirectory(directory);
 
     if (dirInfo.exists) {
-      throw new Error(`Directory ${directory} already exists`);
+      logger.warn(`The directory "${directory}" already exists.`);
+      logger.info(
+        `Please choose a different project name or remove the existing directory.`,
+      );
+      process.exit(1);
     }
 
     logger.info(`Creating Vite + React project: ${projectName}`);
@@ -167,19 +334,43 @@ export const viteReactAdapter: StackAdapter = {
               : "npm";
       const createArgs =
         packageManager === "bun"
-          ? ["create", "vite@latest", directory, "--template", template]
+          ? [
+              "create",
+              "vite@latest",
+              directory,
+              "--template",
+              template,
+              "--yes",
+            ]
           : packageManager === "pnpm"
-            ? ["create", "vite@latest", directory, "--template", template]
+            ? [
+                "create",
+                "vite@latest",
+                directory,
+                "--template",
+                template,
+                "--yes",
+              ]
             : packageManager === "yarn"
-              ? ["create", "vite@latest", directory, "--template", template]
-              : ["create", "vite@latest", directory, "--template", template];
+              ? [
+                  "create",
+                  "vite@latest",
+                  directory,
+                  "--template",
+                  template,
+                  "--yes",
+                ]
+              : [
+                  "create",
+                  "vite@latest",
+                  directory,
+                  "--template",
+                  template,
+                  "--yes",
+                ];
 
       // Run create command in current directory
-      // Note: We stop the spinner before running since stdio: "inherit" shows output directly
-      const createSpinner = spinner();
-      createSpinner.start("Creating Vite project...");
-      createSpinner.stop();
-
+      logger.info("Creating Vite project...");
       try {
         await exec(createCommand, createArgs, {
           cwd: process.cwd(),
@@ -202,25 +393,60 @@ export const viteReactAdapter: StackAdapter = {
               ? "yarn"
               : "npm";
 
+      const installBaseSpinner = spinner();
+      installBaseSpinner.start("Installing dependencies...");
+      try {
+        const installArgs =
+          installCommand === "npm"
+            ? ["install"]
+            : installCommand === "bun"
+              ? ["install"]
+              : ["install"];
+        await exec(installCommand, installArgs, {
+          cwd: projectPath,
+          stdio: "inherit",
+        });
+        installBaseSpinner.stop("Dependencies installed");
+      } catch (error) {
+        installBaseSpinner.stop("Failed to install dependencies");
+        throw error;
+      }
+
       // Install Tailwind CSS if requested
       if (customizations.tailwind) {
         const tailwindSpinner = spinner();
         tailwindSpinner.start("Installing Tailwind CSS...");
         try {
           if (customizations.tailwindVersion === "v4") {
-            // Tailwind v4
-            await exec(
-              installCommand,
-              ["add", "-D", "tailwindcss@next", "@tailwindcss/vite@next"],
-              { cwd: projectPath, stdio: "inherit" },
-            );
+            // Tailwind v4 - following official docs: https://tailwindcss.com/docs/installation/using-vite
+            const tailwindArgs =
+              installCommand === "npm"
+                ? ["install", "--save-dev", "tailwindcss", "@tailwindcss/vite"]
+                : installCommand === "bun"
+                  ? ["add", "-d", "tailwindcss", "@tailwindcss/vite"]
+                  : ["add", "-D", "tailwindcss", "@tailwindcss/vite"];
+            await exec(installCommand, tailwindArgs, {
+              cwd: projectPath,
+              stdio: "inherit",
+            });
           } else {
             // Tailwind v3
-            await exec(
-              installCommand,
-              ["add", "-D", "tailwindcss", "postcss", "autoprefixer"],
-              { cwd: projectPath, stdio: "inherit" },
-            );
+            const tailwindArgs =
+              installCommand === "npm"
+                ? [
+                    "install",
+                    "--save-dev",
+                    "tailwindcss",
+                    "postcss",
+                    "autoprefixer",
+                  ]
+                : installCommand === "bun"
+                  ? ["add", "-d", "tailwindcss", "postcss", "autoprefixer"]
+                  : ["add", "-D", "tailwindcss", "postcss", "autoprefixer"];
+            await exec(installCommand, tailwindArgs, {
+              cwd: projectPath,
+              stdio: "inherit",
+            });
           }
           tailwindSpinner.stop("Tailwind CSS installed");
         } catch (error) {
@@ -231,26 +457,28 @@ export const viteReactAdapter: StackAdapter = {
 
       // Configure Tailwind if added
       if (customizations.tailwind) {
-        if (customizations.tailwindVersion === "v4") {
-          // Tailwind v4 configuration
-          await updateViteConfig(projectPath, customizations.typescript, {
-            addTailwindPlugin: true,
-          });
+        const tailwindConfigSpinner = spinner();
+        tailwindConfigSpinner.start("Configuring Tailwind CSS...");
+        try {
+          if (customizations.tailwindVersion === "v4") {
+            // Tailwind v4 configuration
+            await updateViteConfig(projectPath, customizations.typescript, {
+              addTailwindPlugin: true,
+            });
 
-          // Add Tailwind directives to CSS
-          const cssPath = join(
-            projectPath,
-            customizations.typescript ? "src" : "src",
-            "index.css",
-          );
-          let cssContent = await readFile(cssPath, "utf-8");
-          cssContent = `@import "tailwindcss";\n\n${cssContent}`;
-          await writeFile(cssPath, cssContent);
-        } else {
-          // Tailwind v3 - initialize config
-          const tailwindConfigSpinner = spinner();
-          tailwindConfigSpinner.start("Configuring Tailwind CSS...");
-          try {
+            // Add Tailwind directives to CSS
+            const cssPath = join(projectPath, "src", "index.css");
+            let cssContent = await readFile(cssPath, "utf-8");
+            // Only add if not already present
+            if (
+              !cssContent.includes('@import "tailwindcss"') &&
+              !cssContent.includes("@import 'tailwindcss'")
+            ) {
+              cssContent = `@import "tailwindcss";\n\n${cssContent}`;
+              await writeFile(cssPath, cssContent);
+            }
+          } else {
+            // Tailwind v3 - initialize config
             await exec("npx", ["tailwindcss", "init", "-p"], {
               cwd: projectPath,
               stdio: "inherit",
@@ -274,17 +502,20 @@ export default {
             // Add Tailwind directives to CSS
             const cssPath = join(projectPath, "src", "index.css");
             let cssContent = await readFile(cssPath, "utf-8");
-            cssContent = `@tailwind base;
+            // Only add if not already present
+            if (!cssContent.includes("@tailwind base")) {
+              cssContent = `@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 ${cssContent}`;
-            await writeFile(cssPath, cssContent);
-            tailwindConfigSpinner.stop("Tailwind CSS configured");
-          } catch (error) {
-            tailwindConfigSpinner.stop("Failed to configure Tailwind CSS");
-            throw error;
+              await writeFile(cssPath, cssContent);
+            }
           }
+          tailwindConfigSpinner.stop("Tailwind CSS configured");
+        } catch (error) {
+          tailwindConfigSpinner.stop("Failed to configure Tailwind CSS");
+          throw error;
         }
       }
 
@@ -293,42 +524,106 @@ ${cssContent}`;
         const shadcnSpinner = spinner();
         shadcnSpinner.start("Setting up shadcn/ui...");
         try {
+          // Ensure @types/node is installed for TypeScript projects
           if (customizations.typescript) {
-            await exec(installCommand, ["add", "-D", "@types/node"], {
+            const typesNodeArgs =
+              installCommand === "npm"
+                ? ["install", "--save-dev", "@types/node"]
+                : installCommand === "bun"
+                  ? ["add", "-d", "@types/node"]
+                  : ["add", "-D", "@types/node"];
+            await exec(installCommand, typesNodeArgs, {
               cwd: projectPath,
               stdio: "inherit",
             });
           }
 
-          await ensureViteTsconfigAlias(
-            projectPath,
-            customizations.typescript,
-          );
+          // Ensure path alias is configured before shadcn init
+          await ensureViteTsconfigAlias(projectPath, customizations.typescript);
           await updateViteConfig(projectPath, customizations.typescript, {
             addAlias: true,
           });
 
-          // Initialize shadcn/ui
-          await exec("npx", ["shadcn@latest", "init"], {
+          // Build shadcn init command with user-selected options
+          const shadcnInitArgs = [
+            "shadcn@latest",
+            "init",
+            "-y",
+            "--template",
+            "vite",
+          ];
+
+          if (customizations.shadcnOptions?.baseColor) {
+            shadcnInitArgs.push(
+              "--base-color",
+              customizations.shadcnOptions.baseColor,
+            );
+          }
+
+          if (customizations.shadcnOptions?.style) {
+            shadcnInitArgs.push("--style", customizations.shadcnOptions.style);
+          }
+
+          if (customizations.shadcnOptions?.cssVariables === false) {
+            shadcnInitArgs.push("--no-css-variables");
+          } else {
+            shadcnInitArgs.push("--css-variables");
+          }
+
+          // Initialize shadcn/ui with user options via CLI
+          await exec("npx", shadcnInitArgs, {
             cwd: projectPath,
             stdio: "inherit",
           });
 
-          // Install selected components
+          // Update components.json for style (since CLI doesn't have --style flag)
+          if (customizations.shadcnOptions?.style) {
+            const componentsJsonPath = join(projectPath, "components.json");
+            if (await fileExists(componentsJsonPath)) {
+              const componentsJson = JSON.parse(
+                await readFile(componentsJsonPath, "utf-8"),
+              );
+              componentsJson.style = customizations.shadcnOptions.style;
+              await writeFile(
+                componentsJsonPath,
+                JSON.stringify(componentsJson, null, 2),
+              );
+            }
+          }
+
+          // Install selected components using official CLI
           if (
             customizations.shadcnOptions?.components &&
             customizations.shadcnOptions.components.length > 0
           ) {
-            await exec(
-              "npx",
-              [
-                "shadcn@latest",
-                "add",
-                ...customizations.shadcnOptions.components,
-              ],
-              { cwd: projectPath, stdio: "inherit" },
+            const shadcnAddArgs = [
+              "shadcn@latest",
+              "add",
+              "-y",
+              ...customizations.shadcnOptions.components,
+            ];
+            await exec("npx", shadcnAddArgs, {
+              cwd: projectPath,
+              stdio: "inherit",
+            });
+          }
+
+          if (customizations.tailwindVersion === "v4") {
+            await writeShadcnStyles(
+              projectPath,
+              customizations.shadcnOptions?.style ?? "default",
             );
           }
+
+          const components = customizations.shadcnOptions?.components ?? [];
+          const hasButton = components.includes("button");
+          const hasCard = components.includes("card");
+          await updateViteAppExample(
+            projectPath,
+            customizations.typescript,
+            hasButton && hasCard,
+          );
+
           shadcnSpinner.stop("shadcn/ui setup complete");
         } catch (error) {
           shadcnSpinner.stop("Failed to setup shadcn/ui");
@@ -339,29 +634,12 @@ ${cssContent}`;
       // Add Prettier if requested
       if (customizations.prettier) {
         const prettierSpinner = spinner();
-        prettierSpinner.start("Setting up Prettier...");
+        prettierSpinner.start("Installing Prettier...");
         try {
-          await exec(installCommand, ["add", "-D", "prettier"], {
-            cwd: projectPath,
-            stdio: "inherit",
-          });
-
-          const prettierConfig = `{
-  "semi": true,
-  "singleQuote": false,
-  "tabWidth": 2,
-  "trailingComma": "es5"
-}`;
-          await writeFile(join(projectPath, ".prettierrc"), prettierConfig);
-
-          const prettierIgnore = `node_modules
-dist
-build
-.coverage`;
-          await writeFile(join(projectPath, ".prettierignore"), prettierIgnore);
-          prettierSpinner.stop("Prettier configured");
+          await setupPrettier(projectPath, installCommand);
+          prettierSpinner.stop("Prettier installed");
         } catch (error) {
-          prettierSpinner.stop("Failed to setup Prettier");
+          prettierSpinner.stop("Failed to install Prettier");
           throw error;
         }
       }

@@ -1,6 +1,7 @@
-import { select, text, confirm } from "@clack/prompts";
+import { cancel, confirm, select, text } from "@clack/prompts";
+import chalk from "chalk";
+import { APP_CONFIG } from "../config/index.js";
 import { StackAdapter } from "../types/stack.js";
-import { logger } from "../utils/logger.js";
 
 export async function selectStack(
   adapters: StackAdapter[],
@@ -22,12 +23,13 @@ export async function selectStack(
     });
 
     if (typeof response === "symbol") {
+      cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
       return null;
     }
 
     return response || null;
   } catch (error) {
-    logger.debug(`Prompt cancelled: ${error}`);
+    cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
     return null;
   }
 }
@@ -52,12 +54,13 @@ export async function promptProjectName(
     });
 
     if (typeof response === "symbol") {
+      cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
       return null;
     }
 
     return response || null;
   } catch (error) {
-    logger.debug(`Prompt cancelled: ${error}`);
+    cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
     return null;
   }
 }
@@ -83,12 +86,13 @@ export async function promptDirectory(
     });
 
     if (typeof response === "symbol") {
+      cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
       return null;
     }
 
     return response || null;
   } catch (error) {
-    logger.debug(`Prompt cancelled: ${error}`);
+    cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
     return null;
   }
 }
@@ -112,12 +116,13 @@ export async function promptPackageManager(
     });
 
     if (typeof response === "symbol") {
+      cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
       return null;
     }
 
     return response || null;
   } catch (error) {
-    logger.debug(`Prompt cancelled: ${error}`);
+    cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
     return null;
   }
 }
@@ -136,12 +141,13 @@ export async function promptGit(
     });
 
     if (typeof response === "symbol") {
+      cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
       return false;
     }
 
     return response ?? false;
   } catch (error) {
-    logger.debug(`Prompt cancelled: ${error}`);
+    cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
     return false;
   }
 }
