@@ -92,6 +92,10 @@ describe("validateNpmPackageName", () => {
     expect(validateNpmPackageName("node_modules")).toBe(false);
     expect(validateNpmPackageName("favicon.ico")).toBe(false);
   });
+
+  it("rejects package names that exceed npm's maximum length", () => {
+    expect(validateNpmPackageName("a".repeat(215))).toBe(false);
+  });
 });
 
 describe("getDefaultDirectoryName", () => {

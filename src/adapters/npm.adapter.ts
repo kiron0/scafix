@@ -141,6 +141,10 @@ export const npmPackageAdapter: StackAdapter = {
           "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --watch";
       }
 
+      if (customizations.eslint) {
+        packageJson.scripts.lint = `eslint "src/**/*.${ext}"`;
+      }
+
       await writeFile(
         join(projectPath, "package.json"),
         JSON.stringify(packageJson, null, 2),

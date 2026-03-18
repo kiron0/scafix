@@ -683,6 +683,11 @@ export const expressAdapter: StackAdapter = {
           start: customizations.typescript
             ? "node dist/index.js"
             : "node src/index.js",
+          ...(customizations.eslint
+            ? {
+                lint: `eslint "src/**/*.${customizations.typescript ? "ts" : "js"}"`,
+              }
+            : {}),
         },
         keywords: [],
         author: "",

@@ -1,4 +1,4 @@
-import { access, mkdtemp, rm } from "fs/promises";
+import { access, mkdtemp, readFile, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -70,9 +70,13 @@ describe.sequential("expressAdapter", () => {
     });
 
     const projectPath = join(tempDir, "demo-express");
+    const generatedPackageJson = JSON.parse(
+      await readFile(join(projectPath, "package.json"), "utf8"),
+    );
 
     await expect(access(join(projectPath, ".eslintrc.cjs"))).resolves.toBeUndefined();
     await expect(access(join(projectPath, ".eslintrc.js"))).rejects.toThrow();
+    expect(generatedPackageJson.scripts.lint).toBe('eslint "src/**/*.ts"');
   });
 
   it("installs TS tooling as dev dependencies and keeps JS eslint lean", async () => {
@@ -91,6 +95,10 @@ describe.sequential("expressAdapter", () => {
       packageManager: "pnpm",
       projectName: "demo-express-js",
     });
+
+    const generatedPackageJson = JSON.parse(
+      await readFile(join(tempDir, "demo-express-js", "package.json"), "utf8"),
+    );
 
     expect(mocks.exec).toHaveBeenCalledWith(
       "pnpm",
@@ -115,6 +123,7 @@ describe.sequential("expressAdapter", () => {
     ).toBe(false);
     expect(allExecArgs.some((args) => args.includes("typescript"))).toBe(false);
     expect(allExecArgs.some((args) => args.includes("tsx"))).toBe(false);
+    expect(generatedPackageJson.scripts.lint).toBe('eslint "src/**/*.js"');
   });
 
   it.each([

@@ -88,6 +88,7 @@ describe.sequential("npmPackageAdapter", () => {
     expect(generatedReadme).toContain("pnpm build");
     expect(generatedReadme).toContain("pnpm test");
     expect(generatedReadme).toContain("pnpm publish");
+    expect(generatedPackageJson.scripts.lint).toBe('eslint "src/**/*.ts"');
 
     expect(await readFile(join(projectPath, "jest.config.cjs"), "utf8")).toContain(
       "ts-jest/presets/default-esm",
@@ -211,5 +212,43 @@ describe.sequential("npmPackageAdapter", () => {
         stdio: "inherit",
       }),
     );
+  });
+
+  it("adds a JavaScript lint script when eslint is selected", async () => {
+    mocks.promptNpmPackageCustomizations.mockResolvedValue({
+      typescript: false,
+      buildTool: "tsup",
+      eslint: true,
+      prettier: false,
+      testFramework: "none",
+    });
+
+    await npmPackageAdapter.create({
+      directory: "demo-js-eslint",
+      packageManager: "npm",
+      projectName: "demo-js-eslint",
+      yes: true,
+    });
+
+    const projectPath = join(tempDir, "demo-js-eslint");
+    const generatedPackageJson = JSON.parse(
+      await readFile(join(projectPath, "package.json"), "utf8"),
+    );
+
+    expect(generatedPackageJson.scripts.lint).toBe('eslint "src/**/*.js"');
+  });
+
+  it("rejects overlong npm package names before scaffolding", async () => {
+    const overlongName = "a".repeat(215);
+
+    await expect(
+      npmPackageAdapter.create({
+        packageManager: "npm",
+        projectName: overlongName,
+        yes: true,
+      }),
+    ).rejects.toThrow("Invalid npm package name");
+
+    expect(mocks.promptNpmPackageCustomizations).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,6 @@
 import { existsSync } from "fs";
 import { join } from "path";
+import validatePackageName from "validate-npm-package-name";
 import { logger } from "./logger.js";
 
 export function validateProjectName(name: string): boolean {
@@ -50,7 +51,6 @@ export function validateProjectName(name: string): boolean {
 
 export function validateNpmPackageName(name: string): boolean {
   const trimmedName = name.trim();
-  const reservedPackageNames = new Set(["node_modules", "favicon.ico"]);
 
   if (!trimmedName) {
     logger.error("Package name cannot be empty");
@@ -67,27 +67,18 @@ export function validateNpmPackageName(name: string): boolean {
     return false;
   }
 
-  if (reservedPackageNames.has(trimmedName)) {
-    logger.error("Package name is reserved by npm");
-    return false;
-  }
-
-  const scopedMatch = trimmedName.match(
-    /^@([a-z0-9][a-z0-9._-]*)\/([a-z0-9][a-z0-9._-]*)$/,
-  );
-  if (scopedMatch) {
-    return true;
-  }
-
-  if (!/^[a-z0-9][a-z0-9._-]*$/.test(trimmedName)) {
+  const validationResult = validatePackageName(trimmedName);
+  if (!validationResult.validForNewPackages) {
+    const issues = [
+      ...(validationResult.errors ?? []),
+      ...(validationResult.warnings ?? []),
+    ];
     logger.error(
-      "Package name may only contain lowercase letters, numbers, dots, underscores, and hyphens",
+      issues[0] ?? "Package name is not valid for a new npm package",
     );
-    return false;
-  }
-
-  if (trimmedName.startsWith(".") || trimmedName.startsWith("_")) {
-    logger.error("Package name cannot start with . or _");
+    if (issues.length > 1) {
+      logger.debug(`Package name validation details: ${issues.join("; ")}`);
+    }
     return false;
   }
 
