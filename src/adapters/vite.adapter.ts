@@ -1,7 +1,9 @@
-import { confirm, select, spinner } from "@clack/prompts";
+import { spinner } from "@clack/prompts";
 import { access, readFile, writeFile } from "fs/promises";
 import { join } from "path";
+import { promptViteReactCustomizations } from "../prompts/customizations.js";
 import type { CreateOptions, StackAdapter } from "../types/stack.js";
+import { CliExitError } from "../utils/cli-error.js";
 import { exec } from "../utils/exec.js";
 import { logger } from "../utils/logger.js";
 import { validateDirectory, validateProjectName } from "../utils/validate.js";
@@ -153,6 +155,43 @@ export default {
   }
 }
 
+async function setupPrettier(
+  projectPath: string,
+  packageManager: string,
+): Promise<void> {
+  const s = spinner();
+  s.start("Setting up Prettier...");
+  try {
+    const installCommand = packageManager === "npm" ? "npm" : packageManager;
+    const installArgs =
+      packageManager === "npm"
+        ? ["install", "--save-dev", "prettier"]
+        : ["add", "-D", "prettier"];
+
+    await exec(installCommand, installArgs, {
+      cwd: projectPath,
+      stdio: "pipe",
+    });
+
+    await writeFile(
+      join(projectPath, ".prettierrc"),
+      `{
+  "semi": true,
+  "singleQuote": false,
+  "tabWidth": 2,
+  "trailingComma": "es5"
+}
+`,
+    );
+    await writeFile(join(projectPath, ".prettierignore"), "dist\nnode_modules\n");
+
+    s.stop("Prettier configured");
+  } catch (error) {
+    s.stop("Failed to setup Prettier");
+    throw error;
+  }
+}
+
 export const viteReactAdapter: StackAdapter = {
   id: "vite",
   name: "Vite",
@@ -176,17 +215,35 @@ export const viteReactAdapter: StackAdapter = {
       logger.info(
         `Please choose a different project name or remove the existing directory.`,
       );
-      process.exit(1);
+      throw new CliExitError(1);
     }
+
+    const customizations = await promptViteReactCustomizations({
+      yes: options.yes,
+    });
 
     logger.info(`Launching Vite's official CLI for: ${projectName}`);
     logger.info("");
 
+    const template = customizations.typescript ? "react-ts" : "react";
+
     const pmCommands: Record<string, { cmd: string; args: string[] }> = {
-      npm: { cmd: "npm", args: ["create", "vite@latest", directory] },
-      pnpm: { cmd: "pnpm", args: ["create", "vite", directory] },
-      yarn: { cmd: "yarn", args: ["create", "vite", directory] },
-      bun: { cmd: "bun", args: ["create", "vite", directory] },
+      npm: {
+        cmd: "npm",
+        args: ["create", "vite@latest", directory, "--", "--template", template],
+      },
+      pnpm: {
+        cmd: "pnpm",
+        args: ["create", "vite", directory, "--template", template],
+      },
+      yarn: {
+        cmd: "yarn",
+        args: ["create", "vite", directory, "--template", template],
+      },
+      bun: {
+        cmd: "bun",
+        args: ["create", "vite", directory, "--template", template],
+      },
     };
 
     const { cmd, args } = pmCommands[packageManager] ?? pmCommands.npm;
@@ -194,51 +251,28 @@ export const viteReactAdapter: StackAdapter = {
 
     const projectPath = join(process.cwd(), directory);
 
-    // --- Tailwind ---
-    logger.info("");
-    const addTailwind = await confirm({
-      message: "Add Tailwind CSS?",
-      initialValue: false,
-    });
-
     let tailwindAdded = false;
-
-    if (addTailwind === true) {
-      const twVersion = await select({
-        message: "Tailwind CSS version:",
-        options: [
-          { label: "v4 (Latest)", value: "v4" },
-          { label: "v3 (Stable)", value: "v3" },
-        ],
-      });
-
-      if (twVersion !== null && typeof twVersion !== "symbol") {
-        if (twVersion === "v4") {
-          await setupTailwindV4(projectPath, packageManager);
-        } else {
-          await setupTailwindV3(projectPath, packageManager);
-        }
-        tailwindAdded = true;
+    if (customizations.tailwind) {
+      if (customizations.tailwindVersion === "v3") {
+        await setupTailwindV3(projectPath, packageManager);
+      } else {
+        await setupTailwindV4(projectPath, packageManager);
       }
+      tailwindAdded = true;
     }
 
-    // --- shadcn/ui (only if Tailwind was added — it requires it) ---
-    if (tailwindAdded) {
-      logger.info("");
-      const addShadcn = await confirm({
-        message: "Add shadcn/ui? (React-based projects only)",
-        initialValue: false,
-      });
+    if (customizations.prettier) {
+      await setupPrettier(projectPath, packageManager);
+    }
 
-      if (addShadcn === true) {
-        const shadcnSpinner = spinner();
-        shadcnSpinner.start("Initialising shadcn/ui...");
-        shadcnSpinner.stop();
-        await exec("npx", ["shadcn@latest", "init"], {
-          cwd: projectPath,
-          stdio: "inherit",
-        });
-      }
+    if (tailwindAdded && customizations.shadcn) {
+      const shadcnSpinner = spinner();
+      shadcnSpinner.start("Initialising shadcn/ui...");
+      shadcnSpinner.stop();
+      await exec("npx", ["shadcn@latest", "init"], {
+        cwd: projectPath,
+        stdio: "inherit",
+      });
     }
 
     logger.info("");

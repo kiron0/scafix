@@ -12,6 +12,24 @@ import {
 } from "../utils/package-manager.js";
 import { validateDirectory, validateProjectName } from "../utils/validate.js";
 
+function getDependencyInstallArgs(
+  packageManager: string,
+  packages: string[],
+  dev = false,
+): string[] {
+  if (packageManager === "bun") {
+    return dev ? ["add", "-d", ...packages] : ["add", ...packages];
+  }
+
+  if (packageManager === "pnpm" || packageManager === "yarn") {
+    return dev ? ["add", "-D", ...packages] : ["add", ...packages];
+  }
+
+  return dev
+    ? ["install", "--save-dev", ...packages]
+    : ["install", "--save", ...packages];
+}
+
 async function generatePatternStructure(
   projectPath: string,
   pattern: ExpressCustomizations["pattern"],
@@ -732,30 +750,22 @@ dist
             : packageManager === "yarn"
               ? "yarn"
               : "npm";
-      const installArgs =
-        packageManager === "bun" ||
-        packageManager === "pnpm" ||
-        packageManager === "yarn"
-          ? ["add"]
-          : ["install", "--save"];
 
       const dependencies: string[] = ["express"];
+      const devDependencies: string[] = [];
 
       if (customizations.typescript) {
-        dependencies.push("tsx", "@types/express", "@types/node", "typescript");
+        devDependencies.push("tsx", "@types/express", "@types/node", "typescript");
       }
 
       if (customizations.dotenv) {
         dependencies.push("dotenv");
-        if (customizations.typescript) {
-          dependencies.push("@types/node");
-        }
       }
 
       if (customizations.cors) {
         dependencies.push("cors");
         if (customizations.typescript) {
-          dependencies.push("@types/cors");
+          devDependencies.push("@types/cors");
         }
       }
 
@@ -764,10 +774,28 @@ dist
       }
 
       try {
-        await exec(installCommand, [...installArgs, ...dependencies], {
-          cwd: projectPath,
-          stdio: "inherit",
-        });
+        if (dependencies.length > 0) {
+          await exec(
+            installCommand,
+            getDependencyInstallArgs(packageManager, dependencies),
+            {
+              cwd: projectPath,
+              stdio: "inherit",
+            },
+          );
+        }
+
+        if (devDependencies.length > 0) {
+          await exec(
+            installCommand,
+            getDependencyInstallArgs(packageManager, devDependencies, true),
+            {
+              cwd: projectPath,
+              stdio: "inherit",
+            },
+          );
+        }
+
         installSpinner.stop("Dependencies installed");
       } catch (error) {
         installSpinner.stop("Failed to install dependencies");
@@ -779,33 +807,19 @@ dist
         const eslintSpinner = spinner();
         eslintSpinner.start("Setting up ESLint...");
         try {
-          const eslintArgs =
-            packageManager === "bun"
-              ? [
-                  "add",
-                  "-d",
-                  "eslint",
-                  "@typescript-eslint/parser",
-                  "@typescript-eslint/eslint-plugin",
-                  "eslint-plugin-node",
-                ]
-              : packageManager === "pnpm" || packageManager === "yarn"
-                ? [
-                    "add",
-                    "-D",
-                    "eslint",
-                    "@typescript-eslint/parser",
-                    "@typescript-eslint/eslint-plugin",
-                    "eslint-plugin-node",
-                  ]
-                : [
-                    "install",
-                    "--save-dev",
-                    "eslint",
-                    "@typescript-eslint/parser",
-                    "@typescript-eslint/eslint-plugin",
-                    "eslint-plugin-node",
-                  ];
+          const eslintPackages = customizations.typescript
+            ? [
+                "eslint",
+                "@typescript-eslint/parser",
+                "@typescript-eslint/eslint-plugin",
+                "eslint-plugin-node",
+              ]
+            : ["eslint", "eslint-plugin-node"];
+          const eslintArgs = getDependencyInstallArgs(
+            packageManager,
+            eslintPackages,
+            true,
+          );
           await exec(installCommand, eslintArgs, {
             cwd: projectPath,
             stdio: "inherit",
@@ -838,7 +852,7 @@ dist
   rules: {},
 };`;
 
-          await writeFile(join(projectPath, ".eslintrc.js"), eslintConfig);
+          await writeFile(join(projectPath, ".eslintrc.cjs"), eslintConfig);
           eslintSpinner.stop("ESLint configured");
         } catch (error) {
           eslintSpinner.stop("Failed to setup ESLint");

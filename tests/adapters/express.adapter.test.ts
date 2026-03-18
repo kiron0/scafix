@@ -1,0 +1,166 @@
+import { access, mkdtemp, rm } from "fs/promises";
+import { tmpdir } from "os";
+import { join } from "path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  exec: vi.fn(),
+  logger: {
+    debug: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    success: vi.fn(),
+    warn: vi.fn(),
+  },
+  promptExpressCustomizations: vi.fn(),
+}));
+
+vi.mock("@clack/prompts", () => ({
+  spinner: () => ({
+    start: vi.fn(),
+    stop: vi.fn(),
+  }),
+}));
+
+vi.mock("../../src/utils/exec.js", () => ({
+  exec: mocks.exec,
+}));
+
+vi.mock("../../src/utils/logger.js", () => ({
+  logger: mocks.logger,
+}));
+
+vi.mock("../../src/prompts/customizations.js", () => ({
+  promptExpressCustomizations: mocks.promptExpressCustomizations,
+}));
+
+import { expressAdapter } from "../../src/adapters/express.adapter.js";
+
+describe.sequential("expressAdapter", () => {
+  let cwdSpy: ReturnType<typeof vi.spyOn>;
+  let tempDir: string;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    tempDir = await mkdtemp(join(tmpdir(), "scafix-express-adapter-"));
+    cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tempDir);
+  });
+
+  afterEach(async () => {
+    cwdSpy.mockRestore();
+    await rm(tempDir, { force: true, recursive: true });
+  });
+
+  it("writes an ESM-safe eslint config for generated express projects", async () => {
+    mocks.promptExpressCustomizations.mockResolvedValue({
+      cors: false,
+      dotenv: true,
+      eslint: true,
+      helmet: false,
+      pattern: "mvc",
+      prettier: false,
+      typescript: true,
+    });
+
+    await expressAdapter.create({
+      directory: "demo-express",
+      packageManager: "npm",
+      projectName: "demo-express",
+      yes: true,
+    });
+
+    const projectPath = join(tempDir, "demo-express");
+
+    await expect(access(join(projectPath, ".eslintrc.cjs"))).resolves.toBeUndefined();
+    await expect(access(join(projectPath, ".eslintrc.js"))).rejects.toThrow();
+  });
+
+  it("installs TS tooling as dev dependencies and keeps JS eslint lean", async () => {
+    mocks.promptExpressCustomizations.mockResolvedValue({
+      cors: true,
+      dotenv: true,
+      eslint: true,
+      helmet: false,
+      pattern: "simple",
+      prettier: false,
+      typescript: false,
+    });
+
+    await expressAdapter.create({
+      directory: "demo-express-js",
+      packageManager: "pnpm",
+      projectName: "demo-express-js",
+    });
+
+    expect(mocks.exec).toHaveBeenCalledWith(
+      "pnpm",
+      ["add", "express", "dotenv", "cors"],
+      expect.objectContaining({
+        cwd: join(tempDir, "demo-express-js"),
+        stdio: "inherit",
+      }),
+    );
+    expect(mocks.exec).toHaveBeenCalledWith(
+      "pnpm",
+      ["add", "-D", "eslint", "eslint-plugin-node"],
+      expect.objectContaining({
+        cwd: join(tempDir, "demo-express-js"),
+        stdio: "inherit",
+      }),
+    );
+
+    const allExecArgs = mocks.exec.mock.calls.map((call) => call[1]);
+    expect(
+      allExecArgs.some((args) => args.includes("@typescript-eslint/parser")),
+    ).toBe(false);
+    expect(allExecArgs.some((args) => args.includes("typescript"))).toBe(false);
+    expect(allExecArgs.some((args) => args.includes("tsx"))).toBe(false);
+  });
+
+  it.each([
+    {
+      pattern: "mvc",
+      paths: ["src/routes/index.ts", "src/controllers/example.ts", "src/models/example.ts"],
+    },
+    {
+      pattern: "rest",
+      paths: ["src/routes/api.ts", "src/controllers/user.ts", "src/services/user.ts"],
+    },
+    {
+      pattern: "layered",
+      paths: [
+        "src/presentation/routes.ts",
+        "src/presentation/controllers/product.ts",
+        "src/business/product.ts",
+        "src/data/product.ts",
+      ],
+    },
+    {
+      pattern: "simple",
+      paths: ["src/routes/index.ts"],
+    },
+  ])("generates the expected %s pattern structure", async ({ pattern, paths }) => {
+    mocks.promptExpressCustomizations.mockResolvedValue({
+      cors: false,
+      dotenv: true,
+      eslint: false,
+      helmet: false,
+      pattern,
+      prettier: false,
+      typescript: true,
+    });
+
+    const projectName = `demo-express-${pattern}`;
+    await expressAdapter.create({
+      directory: projectName,
+      packageManager: "npm",
+      projectName,
+      yes: true,
+    });
+
+    const projectPath = join(tempDir, projectName);
+    for (const relativePath of paths) {
+      await expect(access(join(projectPath, relativePath))).resolves.toBeUndefined();
+    }
+  });
+});

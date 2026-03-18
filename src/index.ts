@@ -1,9 +1,11 @@
-import * as p from "@clack/prompts";
 import chalk from "chalk";
 import { Command } from "commander";
 import { createCommand } from "./commands/create.js";
 import { initCommand } from "./commands/init.js";
+import { rootCommand } from "./commands/root.js";
 import { APP_CONFIG } from "./config/index.js";
+import { isCliExitError } from "./utils/cli-error.js";
+import { logger } from "./utils/logger.js";
 
 process.on("SIGINT", () => {
   console.log("\n" + chalk.cyan(APP_CONFIG.thankYouMessage));
@@ -11,6 +13,22 @@ process.on("SIGINT", () => {
 });
 
 const program = new Command();
+
+async function runAction(task: () => Promise<void>): Promise<void> {
+  try {
+    await task();
+  } catch (error) {
+    if (isCliExitError(error)) {
+      process.exitCode = error.exitCode;
+      return;
+    }
+
+    logger.error(
+      `Error: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    process.exitCode = 1;
+  }
+}
 
 program
   .name(APP_CONFIG.name)
@@ -26,7 +44,6 @@ program
   .option(
     "--package-manager <pm>",
     "Package manager (npm, pnpm, yarn, bun)",
-    "npm",
   )
   .option("--git", "Initialize Git repository")
   .option("-y, --yes", "Accept defaults without prompts")
@@ -36,21 +53,23 @@ program
       process.env.DEBUG = "true";
     }
 
-    if (stack) {
-      await createCommand(stack, options);
-    } else {
-      await initCommand(options);
-    }
+    await runAction(async () => {
+      if (stack) {
+        await createCommand(stack, options);
+      } else {
+        await initCommand(options);
+      }
+    });
   });
 
 program
   .command("init")
   .description("Initialize a new project interactively")
-  .option("-y, --yes", "Accept defaults without prompts")
+  .option("-n, --name <name>", "Project name")
+  .option("-d, --directory <dir>", "Project directory")
   .option(
     "--package-manager <pm>",
     "Package manager (npm, pnpm, yarn, bun)",
-    "npm",
   )
   .option("--git", "Initialize Git repository")
   .option("--debug", "Enable debug output")
@@ -58,7 +77,7 @@ program
     if (options.debug) {
       process.env.DEBUG = "true";
     }
-    await initCommand(options);
+    await runAction(() => initCommand(options));
   });
 
 program.action(async (options) => {
@@ -66,14 +85,16 @@ program.action(async (options) => {
     process.env.DEBUG = "true";
   }
 
-  if (process.stdin.isTTY) {
-    p.intro(
-      chalk.cyan.bold(`${APP_CONFIG.displayName} CLI v${APP_CONFIG.version}`),
-    );
-    p.note(APP_CONFIG.description, "About");
-  }
-
-  await initCommand(options);
+  await runAction(() => rootCommand(options));
 });
 
-program.parse();
+async function main(): Promise<void> {
+  await program.parseAsync();
+}
+
+main().catch((error) => {
+  logger.error(
+    `Error: ${error instanceof Error ? error.message : String(error)}`,
+  );
+  process.exitCode = 1;
+});

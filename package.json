@@ -1,6 +1,6 @@
 {
   "name": "scafix",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A universal scaffolding CLI that initializes modern application stacks through a single, consistent interface",
   "type": "module",
   "main": "dist/index.js",
@@ -13,8 +13,10 @@
     "build:watch": "tsup --watch",
     "format": "prettier --write \"**/*.{js,json,ts,md}\"",
     "push": "git add . && git commit -m 'chore: push changes' && git push",
-    "test": "tsup && node dist/index.js",
-    "test:unit": "vitest run"
+    "smoke": "tsup && node dist/index.js",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:smoke": "node scripts/run-network-smoke.mjs"
   },
   "keywords": [
     "cli",

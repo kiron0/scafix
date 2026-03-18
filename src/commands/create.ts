@@ -9,8 +9,12 @@ import {
 } from "../prompts/select-stack.js";
 import type { CliOptions, CreateOptions } from "../types/stack.js";
 import { exec } from "../utils/exec.js";
+import { CliExitError, isCliExitError } from "../utils/cli-error.js";
 import { logger } from "../utils/logger.js";
-import { detectPackageManagerFromCwd } from "../utils/package-manager.js";
+import {
+  detectPackageManagerFromCwd,
+  resolvePackageManagerOption,
+} from "../utils/package-manager.js";
 import { validateDirectory, validateProjectName } from "../utils/validate.js";
 
 export async function createCommand(
@@ -22,14 +26,14 @@ export async function createCommand(
     if (!stackId) {
       logger.error("Stack ID is required. Use: scafix create <stack>");
       logger.info("Available stacks: vite, next, express, npm");
-      process.exit(1);
+      throw new CliExitError(1);
     }
 
     const adapter = getAdapterById(stackId);
     if (!adapter) {
       logger.error(`Unknown stack: ${stackId}`);
       logger.info("Available stacks: vite, next, express, npm");
-      process.exit(1);
+      throw new CliExitError(1);
     }
 
     // Prompt for project name if not provided
@@ -37,19 +41,26 @@ export async function createCommand(
       | string
       | undefined;
     if (!projectName) {
-      projectName = (await promptProjectName({ yes: options.yes })) as string;
+      projectName = (await promptProjectName({
+        yes: options.yes,
+        default: "my-project",
+      })) as string;
       if (!projectName) {
-        process.exit(0);
+        return;
       }
     }
 
     if (!validateProjectName(projectName)) {
-      process.exit(1);
+      throw new CliExitError(1);
     }
 
     // Prompt for directory
-    let directory = (options.directory as string) || projectName;
-    if (!options.yes) {
+    const hasExplicitDirectory =
+      typeof options.directory === "string" && options.directory.trim().length > 0;
+    let directory = hasExplicitDirectory
+      ? (options.directory as string)
+      : projectName;
+    if (!hasExplicitDirectory && !options.yes) {
       const dirResponse = await promptDirectory(projectName, {
         yes: options.yes,
       });
@@ -65,19 +76,26 @@ export async function createCommand(
       logger.info(
         `Please choose a different project name or remove the existing directory.`,
       );
-      process.exit(1);
+      throw new CliExitError(1);
     }
 
     // Detect or prompt for package manager
     let packageManager: "npm" | "pnpm" | "yarn" | "bun" = "npm";
 
     // First, check if explicitly provided via CLI
-    if (options.packageManager) {
-      packageManager = options.packageManager as
-        | "npm"
-        | "pnpm"
-        | "yarn"
-        | "bun";
+    if (options.packageManager !== undefined) {
+      const resolvedPackageManager = resolvePackageManagerOption(
+        options.packageManager,
+      );
+      if (!resolvedPackageManager) {
+        logger.error(
+          `Unsupported package manager: ${String(options.packageManager)}`,
+        );
+        logger.info("Supported package managers: npm, pnpm, yarn, bun");
+        throw new CliExitError(1);
+      }
+
+      packageManager = resolvedPackageManager;
     } else {
       // Try to detect from current directory
       const detectedPm = detectPackageManagerFromCwd();
@@ -104,11 +122,11 @@ export async function createCommand(
 
     // Create options for adapter
     const createOptions: CreateOptions = {
+      ...options,
       projectName,
       directory,
       packageManager,
       git,
-      ...options,
     };
 
     // Create the project
@@ -128,6 +146,10 @@ export async function createCommand(
       }
     }
   } catch (error) {
+    if (isCliExitError(error)) {
+      throw error;
+    }
+
     if (options.debug) {
       logger.error(
         `Error: ${error instanceof Error ? error.stack : String(error)}`,
@@ -137,6 +159,6 @@ export async function createCommand(
         `Error: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
-    process.exit(1);
+    throw new CliExitError(1);
   }
 }

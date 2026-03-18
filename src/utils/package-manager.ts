@@ -2,7 +2,27 @@ import { existsSync } from "fs";
 import { join, resolve } from "path";
 import { cwd } from "process";
 
-export type PackageManager = "npm" | "pnpm" | "yarn" | "bun";
+export const SUPPORTED_PACKAGE_MANAGERS = [
+  "npm",
+  "pnpm",
+  "yarn",
+  "bun",
+] as const;
+
+export type PackageManager = (typeof SUPPORTED_PACKAGE_MANAGERS)[number];
+
+export function isPackageManager(value: unknown): value is PackageManager {
+  return (
+    typeof value === "string" &&
+    SUPPORTED_PACKAGE_MANAGERS.includes(value as PackageManager)
+  );
+}
+
+export function resolvePackageManagerOption(
+  value: unknown,
+): PackageManager | null {
+  return isPackageManager(value) ? value : null;
+}
 
 /**
  * Detects the package manager by checking for lock files in the directory
@@ -64,6 +84,16 @@ export function getInstallCommand(pm: PackageManager): string {
         : "npm install";
 }
 
+export function getAddCommand(pm: PackageManager, pkg: string): string {
+  return pm === "bun"
+    ? `bun add ${pkg}`
+    : pm === "pnpm"
+      ? `pnpm add ${pkg}`
+      : pm === "yarn"
+        ? `yarn add ${pkg}`
+        : `npm install ${pkg}`;
+}
+
 /**
  * Gets the dev command for a package manager
  */
@@ -75,4 +105,16 @@ export function getDevCommand(pm: PackageManager): string {
       : pm === "yarn"
         ? "yarn dev"
         : "npm run dev";
+}
+
+export function getRunCommand(pm: PackageManager, script: string): string {
+  return pm === "npm"
+    ? `npm run ${script}`
+    : pm === "bun"
+      ? `bun run ${script}`
+      : `${pm} ${script}`;
+}
+
+export function getPublishCommand(pm: PackageManager): string {
+  return `${pm} publish`;
 }

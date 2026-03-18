@@ -5,13 +5,7 @@ import { StackAdapter } from "../types/stack.js";
 
 export async function selectStack(
   adapters: StackAdapter[],
-  options: { yes?: boolean } = {},
 ): Promise<StackAdapter | null> {
-  if (options.yes) {
-    // Return first adapter as default when --yes is used
-    return adapters[0] || null;
-  }
-
   try {
     const response = await select({
       message: "Select a stack:",

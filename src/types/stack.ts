@@ -25,5 +25,9 @@ export interface CliOptions {
   help?: boolean;
   version?: boolean;
   git?: boolean;
+  name?: string;
+  projectName?: string;
+  directory?: string;
+  packageManager?: string;
   [key: string]: unknown;
 }

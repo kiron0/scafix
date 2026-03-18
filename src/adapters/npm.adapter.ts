@@ -6,8 +6,10 @@ import type { CreateOptions, StackAdapter } from "../types/stack.js";
 import { exec } from "../utils/exec.js";
 import { logger } from "../utils/logger.js";
 import {
-  detectPackageManager,
+  getAddCommand,
   getInstallCommand,
+  getPublishCommand,
+  getRunCommand,
 } from "../utils/package-manager.js";
 import { validateDirectory, validateProjectName } from "../utils/validate.js";
 
@@ -50,9 +52,6 @@ export const npmPackageAdapter: StackAdapter = {
       await mkdir(join(projectPath, "src"), { recursive: true });
 
       const ext = customizations.typescript ? "ts" : "js";
-      const mainFile = customizations.typescript
-        ? "dist/index.js"
-        : "src/index.js";
 
       // Create package.json
       const packageJson: any = {
@@ -110,7 +109,8 @@ export const npmPackageAdapter: StackAdapter = {
                 types: "./dist/index.d.ts",
               },
             };
-            packageJson.scripts.build = "node build.js";
+            packageJson.scripts.build =
+              "node build.js && tsc --emitDeclarationOnly --declaration --declarationMap false --outDir dist";
             packageJson.scripts.dev = "node build.js --watch";
             break;
           case "none":
@@ -120,7 +120,7 @@ export const npmPackageAdapter: StackAdapter = {
             packageJson.scripts.dev = "tsc --watch";
             break;
         }
-        packageJson.scripts.prepublishOnly = "npm run build";
+        packageJson.scripts.prepublishOnly = packageJson.scripts.build;
       } else {
         packageJson.main = "src/index.js";
         packageJson.scripts.build = 'echo "No build needed"';
@@ -277,7 +277,7 @@ A Node.js package ready for publishing to npm.
 ## Installation
 
 \`\`\`bash
-npm install ${projectName}
+${getAddCommand(packageManager, projectName)}
 \`\`\`
 
 ## Usage
@@ -292,10 +292,10 @@ console.log(greet('World'));
 
 \`\`\`bash
 # Install dependencies
-npm install
+${getInstallCommand(packageManager)}
 
-${customizations.typescript ? "# Build\nnpm run build\n\n" : ""}${customizations.testFramework !== "none" ? "# Run tests\nnpm test\n\n" : ""}# Publish
-npm publish
+${customizations.typescript ? `# Build\n${getRunCommand(packageManager, "build")}\n\n` : ""}${customizations.testFramework !== "none" ? `# Run tests\n${getRunCommand(packageManager, "test")}\n\n` : ""}# Publish
+${getPublishCommand(packageManager)}
 \`\`\`
 
 ## License
@@ -339,8 +339,6 @@ coverage
             : packageManager === "yarn"
               ? "yarn"
               : "npm";
-      const installArgs = ["install"];
-
       const devDependencies: string[] = [];
       const dependencies: string[] = [];
 
@@ -453,7 +451,7 @@ coverage
   rules: {},
 };`;
 
-          await writeFile(join(projectPath, ".eslintrc.js"), eslintConfig);
+          await writeFile(join(projectPath, ".eslintrc.cjs"), eslintConfig);
           eslintSpinner.stop("ESLint configured");
         } catch (error) {
           eslintSpinner.stop("Failed to setup ESLint");
@@ -566,7 +564,7 @@ module.exports = {
   testEnvironment: 'node',
 };
 `;
-            await writeFile(join(projectPath, "jest.config.js"), jestConfig);
+            await writeFile(join(projectPath, "jest.config.cjs"), jestConfig);
           }
 
           testsSpinner.stop(
@@ -578,26 +576,16 @@ module.exports = {
         }
       }
 
-      // Detect package manager from created project
-      const detectedPm = detectPackageManager(projectPath);
-
       logger.success(`Package ${projectName} created successfully!`);
       logger.info(`Next steps:`);
       logger.info(`  cd ${directory}`);
-      logger.info(`  ${getInstallCommand(detectedPm)}`);
       if (customizations.typescript) {
-        logger.info(
-          `  ${detectedPm === "bun" ? "bun" : detectedPm === "pnpm" ? "pnpm" : detectedPm === "yarn" ? "yarn" : "npm"} run build`,
-        );
+        logger.info(`  ${getRunCommand(packageManager, "build")}`);
       }
       if (customizations.testFramework !== "none") {
-        logger.info(
-          `  ${detectedPm === "bun" ? "bun" : detectedPm === "pnpm" ? "pnpm" : detectedPm === "yarn" ? "yarn" : "npm"} test`,
-        );
+        logger.info(`  ${getRunCommand(packageManager, "test")}`);
       }
-      logger.info(
-        `  ${detectedPm === "bun" ? "bun" : detectedPm === "pnpm" ? "pnpm" : detectedPm === "yarn" ? "yarn" : "npm"} publish`,
-      );
+      logger.info(`  ${getPublishCommand(packageManager)}`);
     } catch (error) {
       logger.error(
         `Failed to create package: ${error instanceof Error ? error.message : String(error)}`,

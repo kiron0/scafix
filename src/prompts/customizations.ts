@@ -1,4 +1,4 @@
-import { select, confirm, multiselect } from "@clack/prompts";
+import { select, confirm } from "@clack/prompts";
 import { logger } from "../utils/logger.js";
 
 export interface ViteReactCustomizations {
@@ -6,27 +6,13 @@ export interface ViteReactCustomizations {
   tailwind: boolean;
   tailwindVersion?: "v3" | "v4";
   shadcn: boolean;
-  shadcnOptions?: {
-    style?: "default" | "new-york";
-    baseColor?: "slate" | "gray" | "zinc" | "neutral" | "stone";
-    cssVariables?: boolean;
-    components?: string[];
-  };
-  eslint: boolean;
   prettier: boolean;
 }
 
 export interface NextCustomizations {
   typescript: boolean;
   tailwind: boolean;
-  tailwindVersion?: "v3" | "v4";
   shadcn: boolean;
-  shadcnOptions?: {
-    style?: "default" | "new-york";
-    baseColor?: "slate" | "gray" | "zinc" | "neutral" | "stone";
-    cssVariables?: boolean;
-    components?: string[];
-  };
   eslint: boolean;
   prettier: boolean;
   appRouter: boolean;
@@ -59,7 +45,6 @@ export async function promptViteReactCustomizations(
       typescript: true,
       tailwind: false,
       shadcn: false,
-      eslint: true,
       prettier: false,
     };
   }
@@ -69,7 +54,6 @@ export async function promptViteReactCustomizations(
       typescript: true,
       tailwind: false,
       shadcn: false,
-      eslint: true,
       prettier: false,
     };
 
@@ -121,82 +105,7 @@ export async function promptViteReactCustomizations(
       }
       customizations.shadcn = shadcnResponse ?? false;
 
-      if (customizations.shadcn) {
-        const shadcnOptions: ViteReactCustomizations["shadcnOptions"] = {};
-
-        // Style
-        const styleResponse = await select({
-          message: "shadcn/ui style:",
-          options: [
-            { label: "Default", value: "default" },
-            { label: "New York", value: "new-york" },
-          ],
-        });
-        if (typeof styleResponse === "symbol") {
-          throw new Error("Prompt cancelled");
-        }
-        shadcnOptions.style = styleResponse ?? "default";
-
-        // Base color
-        const colorResponse = await select({
-          message: "Base color:",
-          options: [
-            { label: "Slate", value: "slate" },
-            { label: "Gray", value: "gray" },
-            { label: "Zinc", value: "zinc" },
-            { label: "Neutral", value: "neutral" },
-            { label: "Stone", value: "stone" },
-          ],
-        });
-        if (typeof colorResponse === "symbol") {
-          throw new Error("Prompt cancelled");
-        }
-        shadcnOptions.baseColor = colorResponse ?? "slate";
-
-        // CSS Variables
-        const cssVarsResponse = await confirm({
-          message: "Use CSS variables for theming?",
-          initialValue: true,
-        });
-        if (typeof cssVarsResponse === "symbol") {
-          throw new Error("Prompt cancelled");
-        }
-        shadcnOptions.cssVariables = cssVarsResponse ?? true;
-
-        // Components (multi-select)
-        const componentsResponse = await multiselect({
-          message: "Select shadcn/ui components to install:",
-          options: [
-            { label: "Button", value: "button" },
-            { label: "Card", value: "card" },
-            { label: "Input", value: "input" },
-            { label: "Label", value: "label" },
-            { label: "Dialog", value: "dialog" },
-            { label: "Dropdown Menu", value: "dropdown-menu" },
-            { label: "Select", value: "select" },
-            { label: "Tabs", value: "tabs" },
-            { label: "Toast", value: "toast" },
-            { label: "Avatar", value: "avatar" },
-          ],
-        });
-        if (typeof componentsResponse === "symbol") {
-          throw new Error("Prompt cancelled");
-        }
-        shadcnOptions.components = componentsResponse ?? [];
-
-        customizations.shadcnOptions = shadcnOptions;
-      }
     }
-
-    // ESLint
-    const eslintResponse = await confirm({
-      message: "Add ESLint?",
-      initialValue: true,
-    });
-    if (typeof eslintResponse === "symbol") {
-      throw new Error("Prompt cancelled");
-    }
-    customizations.eslint = eslintResponse ?? true;
 
     // Prettier
     const prettierResponse = await confirm({
@@ -215,7 +124,6 @@ export async function promptViteReactCustomizations(
       typescript: true,
       tailwind: false,
       shadcn: false,
-      eslint: true,
       prettier: false,
     };
   }
@@ -228,7 +136,6 @@ export async function promptNextCustomizations(
     return {
       typescript: true,
       tailwind: true,
-      tailwindVersion: "v4",
       shadcn: false,
       eslint: true,
       prettier: false,
@@ -241,7 +148,6 @@ export async function promptNextCustomizations(
     const customizations: NextCustomizations = {
       typescript: true,
       tailwind: true,
-      tailwindVersion: "v4",
       shadcn: false,
       eslint: true,
       prettier: false,
@@ -272,20 +178,6 @@ export async function promptNextCustomizations(
     }
     customizations.tailwind = tailwindResponse ?? true;
 
-    if (customizations.tailwind) {
-      const tailwindVersionResponse = await select({
-        message: "Tailwind CSS version:",
-        options: [
-          { label: "v4 (Latest)", value: "v4" },
-          { label: "v3 (Stable)", value: "v3" },
-        ],
-      });
-      if (typeof tailwindVersionResponse === "symbol") {
-        throw new Error("Prompt cancelled");
-      }
-      customizations.tailwindVersion = tailwindVersionResponse ?? "v4";
-    }
-
     // Shadcn UI
     if (customizations.tailwind) {
       const shadcnResponse = await confirm({
@@ -297,67 +189,6 @@ export async function promptNextCustomizations(
       }
       customizations.shadcn = shadcnResponse ?? false;
 
-      if (customizations.shadcn) {
-        const shadcnOptions: NextCustomizations["shadcnOptions"] = {};
-
-        const styleResponse = await select({
-          message: "shadcn/ui style:",
-          options: [
-            { label: "Default", value: "default" },
-            { label: "New York", value: "new-york" },
-          ],
-        });
-        if (typeof styleResponse === "symbol") {
-          throw new Error("Prompt cancelled");
-        }
-        shadcnOptions.style = styleResponse ?? "default";
-
-        const colorResponse = await select({
-          message: "Base color:",
-          options: [
-            { label: "Slate", value: "slate" },
-            { label: "Gray", value: "gray" },
-            { label: "Zinc", value: "zinc" },
-            { label: "Neutral", value: "neutral" },
-            { label: "Stone", value: "stone" },
-          ],
-        });
-        if (typeof colorResponse === "symbol") {
-          throw new Error("Prompt cancelled");
-        }
-        shadcnOptions.baseColor = colorResponse ?? "slate";
-
-        const cssVarsResponse = await confirm({
-          message: "Use CSS variables for theming?",
-          initialValue: true,
-        });
-        if (typeof cssVarsResponse === "symbol") {
-          throw new Error("Prompt cancelled");
-        }
-        shadcnOptions.cssVariables = cssVarsResponse ?? true;
-
-        const componentsResponse = await multiselect({
-          message: "Select shadcn/ui components to install:",
-          options: [
-            { label: "Button", value: "button" },
-            { label: "Card", value: "card" },
-            { label: "Input", value: "input" },
-            { label: "Label", value: "label" },
-            { label: "Dialog", value: "dialog" },
-            { label: "Dropdown Menu", value: "dropdown-menu" },
-            { label: "Select", value: "select" },
-            { label: "Tabs", value: "tabs" },
-            { label: "Toast", value: "toast" },
-            { label: "Avatar", value: "avatar" },
-          ],
-        });
-        if (typeof componentsResponse === "symbol") {
-          throw new Error("Prompt cancelled");
-        }
-        shadcnOptions.components = componentsResponse ?? [];
-
-        customizations.shadcnOptions = shadcnOptions;
-      }
     }
 
     // ESLint
@@ -406,7 +237,6 @@ export async function promptNextCustomizations(
     return {
       typescript: true,
       tailwind: true,
-      tailwindVersion: "v4",
       shadcn: false,
       eslint: true,
       prettier: false,

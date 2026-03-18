@@ -1,9 +1,49 @@
-import { confirm } from "@clack/prompts";
+import { spinner } from "@clack/prompts";
+import { writeFile } from "fs/promises";
 import { join } from "path";
+import { promptNextCustomizations } from "../prompts/customizations.js";
 import type { CreateOptions, StackAdapter } from "../types/stack.js";
+import { CliExitError } from "../utils/cli-error.js";
 import { exec } from "../utils/exec.js";
 import { logger } from "../utils/logger.js";
 import { validateDirectory, validateProjectName } from "../utils/validate.js";
+
+async function setupPrettier(
+  projectPath: string,
+  packageManager: string,
+): Promise<void> {
+  const s = spinner();
+  s.start("Setting up Prettier...");
+  try {
+    const installCommand = packageManager === "npm" ? "npm" : packageManager;
+    const installArgs =
+      packageManager === "npm"
+        ? ["install", "--save-dev", "prettier"]
+        : ["add", "-D", "prettier"];
+
+    await exec(installCommand, installArgs, {
+      cwd: projectPath,
+      stdio: "pipe",
+    });
+
+    await writeFile(
+      join(projectPath, ".prettierrc"),
+      `{
+  "semi": true,
+  "singleQuote": false,
+  "tabWidth": 2,
+  "trailingComma": "es5"
+}
+`,
+    );
+    await writeFile(join(projectPath, ".prettierignore"), ".next\nnode_modules\n");
+
+    s.stop("Prettier configured");
+  } catch (error) {
+    s.stop("Failed to setup Prettier");
+    throw error;
+  }
+}
 
 export const nextAdapter: StackAdapter = {
   id: "next",
@@ -29,32 +69,105 @@ export const nextAdapter: StackAdapter = {
       logger.info(
         `Please choose a different project name or remove the existing directory.`,
       );
-      process.exit(1);
+      throw new CliExitError(1);
     }
+
+    const customizations = await promptNextCustomizations({
+      yes: options.yes,
+    });
 
     logger.info(`Launching Next.js's official CLI for: ${projectName}`);
     logger.info("");
 
+    const packageManagerFlag =
+      packageManager === "pnpm"
+        ? "--use-pnpm"
+        : packageManager === "yarn"
+          ? "--use-yarn"
+          : packageManager === "bun"
+            ? "--use-bun"
+            : "--use-npm";
+
     const pmCommands: Record<string, { cmd: string; args: string[] }> = {
-      npm: { cmd: "npx", args: ["create-next-app@latest", directory] },
-      pnpm: { cmd: "pnpm", args: ["dlx", "create-next-app@latest", directory] },
-      yarn: { cmd: "yarn", args: ["dlx", "create-next-app@latest", directory] },
-      bun: { cmd: "bunx", args: ["create-next-app@latest", directory] },
+      npm: {
+        cmd: "npx",
+        args: [
+          "create-next-app@latest",
+          directory,
+          customizations.typescript ? "--ts" : "--js",
+          customizations.eslint ? "--eslint" : "--no-eslint",
+          customizations.appRouter ? "--app" : "--no-app",
+          customizations.srcDir ? "--src-dir" : "--no-src-dir",
+          customizations.tailwind ? "--tailwind" : "--no-tailwind",
+          "--import-alias",
+          "@/*",
+          packageManagerFlag,
+          "--yes",
+        ],
+      },
+      pnpm: {
+        cmd: "pnpm",
+        args: [
+          "dlx",
+          "create-next-app@latest",
+          directory,
+          customizations.typescript ? "--ts" : "--js",
+          customizations.eslint ? "--eslint" : "--no-eslint",
+          customizations.appRouter ? "--app" : "--no-app",
+          customizations.srcDir ? "--src-dir" : "--no-src-dir",
+          customizations.tailwind ? "--tailwind" : "--no-tailwind",
+          "--import-alias",
+          "@/*",
+          packageManagerFlag,
+          "--yes",
+        ],
+      },
+      yarn: {
+        cmd: "yarn",
+        args: [
+          "dlx",
+          "create-next-app@latest",
+          directory,
+          customizations.typescript ? "--ts" : "--js",
+          customizations.eslint ? "--eslint" : "--no-eslint",
+          customizations.appRouter ? "--app" : "--no-app",
+          customizations.srcDir ? "--src-dir" : "--no-src-dir",
+          customizations.tailwind ? "--tailwind" : "--no-tailwind",
+          "--import-alias",
+          "@/*",
+          packageManagerFlag,
+          "--yes",
+        ],
+      },
+      bun: {
+        cmd: "bunx",
+        args: [
+          "create-next-app@latest",
+          directory,
+          customizations.typescript ? "--ts" : "--js",
+          customizations.eslint ? "--eslint" : "--no-eslint",
+          customizations.appRouter ? "--app" : "--no-app",
+          customizations.srcDir ? "--src-dir" : "--no-src-dir",
+          customizations.tailwind ? "--tailwind" : "--no-tailwind",
+          "--import-alias",
+          "@/*",
+          packageManagerFlag,
+          "--yes",
+        ],
+      },
     };
 
     const { cmd, args } = pmCommands[packageManager] ?? pmCommands.npm;
 
     await exec(cmd, args, { cwd: process.cwd(), stdio: "inherit" });
 
-    // Optionally initialise shadcn/ui after the project is created
-    logger.info("");
-    const addShadcn = await confirm({
-      message: "Would you like to add shadcn/ui?",
-      initialValue: false,
-    });
+    const projectPath = join(process.cwd(), directory);
 
-    if (addShadcn === true) {
-      const projectPath = join(process.cwd(), directory);
+    if (customizations.prettier) {
+      await setupPrettier(projectPath, packageManager);
+    }
+
+    if (customizations.shadcn) {
       logger.info("");
       logger.info("Initialising shadcn/ui...");
       await exec("npx", ["shadcn@latest", "init"], {
