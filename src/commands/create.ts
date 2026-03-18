@@ -21,14 +21,14 @@ export async function createCommand(
     // If no stack ID provided, we'll handle it in interactive mode
     if (!stackId) {
       logger.error("Stack ID is required. Use: scafix create <stack>");
-      logger.info("Available stacks: vite, next, express, npm-package");
+      logger.info("Available stacks: vite, next, express, npm");
       process.exit(1);
     }
 
     const adapter = getAdapterById(stackId);
     if (!adapter) {
       logger.error(`Unknown stack: ${stackId}`);
-      logger.info("Available stacks: vite, next, express, npm-package");
+      logger.info("Available stacks: vite, next, express, npm");
       process.exit(1);
     }
 

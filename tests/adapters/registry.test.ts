@@ -11,7 +11,7 @@ describe("adapters registry", () => {
     expect(ids).toContain("vite");
     expect(ids).toContain("next");
     expect(ids).toContain("express");
-    expect(ids).toContain("npm-package");
+    expect(ids).toContain("npm");
   });
 
   it("every adapter has required fields", () => {
@@ -33,12 +33,14 @@ describe("getAdapterById", () => {
     expect(adapter).toBeDefined();
     expect(adapter?.id).toBe("vite");
     expect(adapter?.name).toBe("Vite");
+    expect(adapter?.backend).toBe(false);
   });
 
   it("returns the next adapter", () => {
     const adapter = getAdapterById("next");
     expect(adapter?.id).toBe("next");
     expect(adapter?.name).toBe("Next.js");
+    expect(adapter?.backend).toBe(false);
   });
 
   it("returns the express adapter", () => {
@@ -46,9 +48,9 @@ describe("getAdapterById", () => {
     expect(adapter?.id).toBe("express");
   });
 
-  it("returns the npm-package adapter", () => {
-    const adapter = getAdapterById("npm-package");
-    expect(adapter?.id).toBe("npm-package");
+  it("returns the npm adapter", () => {
+    const adapter = getAdapterById("npm");
+    expect(adapter?.id).toBe("npm");
   });
 
   it("returns undefined for an unknown id", () => {

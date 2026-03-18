@@ -12,7 +12,7 @@ import {
 import { validateDirectory, validateProjectName } from "../utils/validate.js";
 
 export const npmPackageAdapter: StackAdapter = {
-  id: "npm-package",
+  id: "npm",
   name: "NPM Package",
   description: "NPM package ready for publishing (JavaScript or TypeScript)",
   backend: false,
@@ -127,9 +127,12 @@ export const npmPackageAdapter: StackAdapter = {
         packageJson.scripts.prepublishOnly = 'echo "Ready to publish"';
       }
 
-      if (customizations.tests) {
+      if (customizations.testFramework === "vitest") {
         packageJson.scripts.test = "vitest";
         packageJson.scripts["test:watch"] = "vitest --watch";
+      } else if (customizations.testFramework === "jest") {
+        packageJson.scripts.test = "jest";
+        packageJson.scripts["test:watch"] = "jest --watch";
       }
 
       await writeFile(
@@ -291,7 +294,7 @@ console.log(greet('World'));
 # Install dependencies
 npm install
 
-${customizations.typescript ? "# Build\nnpm run build\n\n" : ""}${customizations.tests ? "# Run tests\nnpm test\n\n" : ""}# Publish
+${customizations.typescript ? "# Build\nnpm run build\n\n" : ""}${customizations.testFramework !== "none" ? "# Run tests\nnpm test\n\n" : ""}# Publish
 npm publish
 \`\`\`
 
@@ -368,10 +371,16 @@ coverage
         devDependencies.push("prettier");
       }
 
-      if (customizations.tests) {
+      if (customizations.testFramework === "vitest") {
         devDependencies.push("vitest");
         if (customizations.typescript) {
           devDependencies.push("@vitest/ui");
+        }
+      } else if (customizations.testFramework === "jest") {
+        if (customizations.typescript) {
+          devDependencies.push("jest", "@types/jest", "ts-jest");
+        } else {
+          devDependencies.push("jest");
         }
       }
 
@@ -478,64 +487,91 @@ coverage
       }
 
       // Setup tests if requested
-      if (customizations.tests) {
+      if (customizations.testFramework !== "none") {
         const testsSpinner = spinner();
-        testsSpinner.start("Setting up tests...");
+        testsSpinner.start(
+          `Setting up ${customizations.testFramework === "jest" ? "Jest" : "Vitest"}...`,
+        );
         try {
-          const testFile = customizations.typescript
-            ? "index.test.ts"
-            : "index.test.js";
-          const testContent = customizations.typescript
-            ? `import { describe, it, expect } from 'vitest';
-import { greet } from './index.js';
-
-describe('greet', () => {
-  it('should return a greeting message', () => {
-    expect(greet('World')).toBe('Hello, World!');
-  });
-});
-`
-            : `import { describe, it, expect } from 'vitest';
-import { greet } from './index.js';
-
-describe('greet', () => {
-  it('should return a greeting message', () => {
-    expect(greet('World')).toBe('Hello, World!');
-  });
-});
-`;
+          const testExt = customizations.typescript ? "ts" : "js";
+          const testFile = `index.test.${testExt}`;
 
           await mkdir(join(projectPath, "src", "__tests__"), {
             recursive: true,
           });
-          await writeFile(
-            join(projectPath, "src", "__tests__", testFile),
-            testContent,
-          );
 
-          // Create vitest config
-          const vitestConfig = customizations.typescript
-            ? `import { defineConfig } from 'vitest/config';
+          if (customizations.testFramework === "vitest") {
+            const testContent = `import { describe, it, expect } from 'vitest';
+import { greet } from '../index.js';
 
-export default defineConfig({
-  test: {
-    globals: true,
-    environment: 'node',
-  },
-});
-`
-            : `import { defineConfig } from 'vitest/config';
-
-export default defineConfig({
-  test: {
-    globals: true,
-    environment: 'node',
-  },
+describe('greet', () => {
+  it('should return a greeting message', () => {
+    expect(greet('World')).toBe('Hello, World!');
+  });
 });
 `;
+            await writeFile(
+              join(projectPath, "src", "__tests__", testFile),
+              testContent,
+            );
 
-          await writeFile(join(projectPath, "vitest.config.ts"), vitestConfig);
-          testsSpinner.stop("Tests configured");
+            await writeFile(
+              join(projectPath, "vitest.config.ts"),
+              `import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'node',
+  },
+});
+`,
+            );
+          } else {
+            // Jest
+            const testContent = `const { greet } = require('../index.js');
+
+describe('greet', () => {
+  it('should return a greeting message', () => {
+    expect(greet('World')).toBe('Hello, World!');
+  });
+});
+`;
+            const tsTestContent = `import { greet } from '../index.js';
+
+describe('greet', () => {
+  it('should return a greeting message', () => {
+    expect(greet('World')).toBe('Hello, World!');
+  });
+});
+`;
+            await writeFile(
+              join(projectPath, "src", "__tests__", testFile),
+              customizations.typescript ? tsTestContent : testContent,
+            );
+
+            const jestConfig = customizations.typescript
+              ? `/** @type {import('jest').Config} */
+module.exports = {
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  moduleFileExtensions: ['ts', 'js'],
+  transform: {
+    '^.+\\.ts$': 'ts-jest',
+  },
+};
+`
+              : `/** @type {import('jest').Config} */
+module.exports = {
+  testEnvironment: 'node',
+};
+`;
+            await writeFile(join(projectPath, "jest.config.js"), jestConfig);
+          }
+
+          testsSpinner.stop(
+            `${customizations.testFramework === "jest" ? "Jest" : "Vitest"} configured`,
+          );
         } catch (error) {
           testsSpinner.stop("Failed to setup tests");
           throw error;
@@ -554,7 +590,7 @@ export default defineConfig({
           `  ${detectedPm === "bun" ? "bun" : detectedPm === "pnpm" ? "pnpm" : detectedPm === "yarn" ? "yarn" : "npm"} run build`,
         );
       }
-      if (customizations.tests) {
+      if (customizations.testFramework !== "none") {
         logger.info(
           `  ${detectedPm === "bun" ? "bun" : detectedPm === "pnpm" ? "pnpm" : detectedPm === "yarn" ? "yarn" : "npm"} test`,
         );

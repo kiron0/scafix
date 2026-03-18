@@ -10,7 +10,7 @@ export const nextAdapter: StackAdapter = {
   name: "Next.js",
   description:
     "Scaffold a Next.js project via the official create-next-app CLI",
-  backend: true,
+  backend: false,
 
   async create(options: CreateOptions): Promise<void> {
     const {

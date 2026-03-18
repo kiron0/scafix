@@ -20,7 +20,7 @@ program
 program
   .command("create")
   .description("Create a new project with a specific stack")
-  .argument("[stack]", "Stack ID (vite, next, express, npm-package)")
+  .argument("[stack]", "Stack ID (vite, next, express, npm)")
   .option("-n, --name <name>", "Project name")
   .option("-d, --directory <dir>", "Project directory")
   .option(

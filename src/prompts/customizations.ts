@@ -48,7 +48,7 @@ export interface NpmPackageCustomizations {
   buildTool: "tsup" | "rollup" | "esbuild" | "none";
   eslint: boolean;
   prettier: boolean;
-  tests: boolean;
+  testFramework: "vitest" | "jest" | "none";
 }
 
 export async function promptViteReactCustomizations(
@@ -560,7 +560,7 @@ export async function promptNpmPackageCustomizations(
       buildTool: "tsup",
       eslint: true,
       prettier: false,
-      tests: false,
+      testFramework: "none",
     };
   }
 
@@ -570,7 +570,7 @@ export async function promptNpmPackageCustomizations(
       buildTool: "tsup",
       eslint: true,
       prettier: false,
-      tests: false,
+      testFramework: "none",
     };
 
     // TypeScript
@@ -639,15 +639,29 @@ export async function promptNpmPackageCustomizations(
     }
     customizations.prettier = prettierResponse ?? false;
 
-    // Tests
-    const testsResponse = await confirm({
-      message: "Add test setup (Vitest)?",
-      initialValue: false,
+    // Test framework
+    const testFrameworkResponse = await select({
+      message: "Add test setup?",
+      options: [
+        { label: "None", value: "none" },
+        {
+          label: "Vitest",
+          hint: "Fast, Vite-native test runner",
+          value: "vitest",
+        },
+        {
+          label: "Jest",
+          hint: "Widely adopted, great ecosystem",
+          value: "jest",
+        },
+      ],
     });
-    if (typeof testsResponse === "symbol") {
+    if (typeof testFrameworkResponse === "symbol") {
       throw new Error("Prompt cancelled");
     }
-    customizations.tests = testsResponse ?? false;
+    customizations.testFramework =
+      (testFrameworkResponse as NpmPackageCustomizations["testFramework"]) ??
+      "none";
 
     return customizations;
   } catch (error) {
@@ -657,7 +671,7 @@ export async function promptNpmPackageCustomizations(
       buildTool: "tsup",
       eslint: true,
       prettier: false,
-      tests: false,
+      testFramework: "none",
     };
   }
 }
