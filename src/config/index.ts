@@ -9,5 +9,5 @@ export const APP_CONFIG = {
   version: packageJson.version,
   description:
     "A universal scaffolding CLI that initializes modern application stacks through a single, consistent interface.",
-  thankYouMessage: `Thank you for using ${appDisplayName}`,
+  thankYouMessage: `Thank you for using ${appDisplayName}!`,
 } as const;
