@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   ],
   detectPackageManagerFromCwd: vi.fn(),
   exec: vi.fn(),
+  getDefaultDirectoryName: vi.fn(),
   logger: {
     debug: vi.fn(),
     error: vi.fn(),
@@ -25,6 +26,8 @@ const mocks = vi.hoisted(() => ({
   promptPackageManager: vi.fn(),
   promptProjectName: vi.fn(),
   selectStack: vi.fn(),
+  validateNpmPackageName: vi.fn(),
+  validateProjectName: vi.fn(),
 }));
 
 vi.mock("@clack/prompts", () => ({
@@ -62,6 +65,12 @@ vi.mock("../../src/utils/package-manager.js", async () => {
   };
 });
 
+vi.mock("../../src/utils/validate.js", () => ({
+  getDefaultDirectoryName: mocks.getDefaultDirectoryName,
+  validateNpmPackageName: mocks.validateNpmPackageName,
+  validateProjectName: mocks.validateProjectName,
+}));
+
 import { initCommand } from "../../src/commands/init.js";
 
 describe("initCommand", () => {
@@ -69,6 +78,9 @@ describe("initCommand", () => {
     vi.clearAllMocks();
     mocks.selectStack.mockResolvedValue(mocks.adapters[0]);
     mocks.promptProjectName.mockResolvedValue("my-project");
+    mocks.getDefaultDirectoryName.mockImplementation((name: string) => name);
+    mocks.validateNpmPackageName.mockReturnValue(true);
+    mocks.validateProjectName.mockReturnValue(true);
   });
 
   it("rejects stack-less non-interactive usage", async () => {
@@ -123,6 +135,30 @@ describe("initCommand", () => {
     expect(mocks.adapters[0].create).not.toHaveBeenCalled();
     expect(mocks.logger.error).toHaveBeenCalledWith(
       "Unsupported package manager: pip",
+    );
+  });
+
+  it("uses npm package validation and a safe default directory for scoped packages", async () => {
+    const npmAdapter = {
+      backend: false,
+      create: vi.fn(),
+      description: "test adapter",
+      id: "npm",
+      name: "NPM Package",
+    };
+    mocks.selectStack.mockResolvedValue(npmAdapter);
+    mocks.getDefaultDirectoryName.mockReturnValue("demo-pkg");
+
+    await initCommand({
+      name: "@scope/demo-pkg",
+    });
+
+    expect(mocks.validateNpmPackageName).toHaveBeenCalledWith("@scope/demo-pkg");
+    expect(npmAdapter.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        directory: "demo-pkg",
+        projectName: "@scope/demo-pkg",
+      }),
     );
   });
 });

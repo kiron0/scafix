@@ -6,6 +6,7 @@ import type { CreateOptions, StackAdapter } from "../types/stack.js";
 import { CliExitError } from "../utils/cli-error.js";
 import { exec } from "../utils/exec.js";
 import { logger } from "../utils/logger.js";
+import { getDlxCommand } from "../utils/package-manager.js";
 import { validateDirectory, validateProjectName } from "../utils/validate.js";
 
 async function fileExists(filePath: string): Promise<boolean> {
@@ -25,6 +26,15 @@ async function detectViteConfigPath(
   if (await fileExists(ts)) return ts;
   if (await fileExists(js)) return js;
   return null;
+}
+
+function getLocalBinaryPath(projectPath: string, binaryName: string): string {
+  return join(
+    projectPath,
+    "node_modules",
+    ".bin",
+    process.platform === "win32" ? `${binaryName}.cmd` : binaryName,
+  );
 }
 
 async function patchViteConfig(configPath: string): Promise<void> {
@@ -112,7 +122,7 @@ async function setupTailwindV3(
       [
         packageManager === "npm" ? "install" : "add",
         ...devFlag,
-        "tailwindcss",
+        "tailwindcss@^3",
         "postcss",
         "autoprefixer",
       ],
@@ -124,7 +134,7 @@ async function setupTailwindV3(
     throw err;
   }
 
-  await exec("npx", ["tailwindcss", "init", "-p"], {
+  await exec(getLocalBinaryPath(projectPath, "tailwindcss"), ["init", "-p"], {
     cwd: projectPath,
     stdio: "pipe",
   });
@@ -269,7 +279,8 @@ export const viteReactAdapter: StackAdapter = {
       const shadcnSpinner = spinner();
       shadcnSpinner.start("Initialising shadcn/ui...");
       shadcnSpinner.stop();
-      await exec("npx", ["shadcn@latest", "init"], {
+      const dlx = getDlxCommand(packageManager, "shadcn@latest", ["init"]);
+      await exec(dlx.cmd, dlx.args, {
         cwd: projectPath,
         stdio: "inherit",
       });

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  getDefaultDirectoryName,
   validateDirectory,
+  validateNpmPackageName,
   validateProjectName,
 } from "../../src/utils/validate.js";
 
@@ -59,5 +61,45 @@ describe("validateDirectory", () => {
     const result = validateDirectory("my-project");
     expect(result.path).toContain("my-project");
     expect(result.path.startsWith("/")).toBe(true);
+  });
+});
+
+describe("validateNpmPackageName", () => {
+  it("accepts lowercase npm-safe names", () => {
+    expect(validateNpmPackageName("my-package")).toBe(true);
+    expect(validateNpmPackageName("my_package.1")).toBe(true);
+  });
+
+  it("accepts scoped package names", () => {
+    expect(validateNpmPackageName("@scope/my-package")).toBe(true);
+  });
+
+  it("rejects uppercase package names", () => {
+    expect(validateNpmPackageName("MyPackage")).toBe(false);
+  });
+
+  it("rejects package names with spaces", () => {
+    expect(validateNpmPackageName("my package")).toBe(false);
+    expect(validateNpmPackageName(" my-package ")).toBe(false);
+  });
+
+  it("rejects package names that start with dots or underscores", () => {
+    expect(validateNpmPackageName(".my-package")).toBe(false);
+    expect(validateNpmPackageName("_my-package")).toBe(false);
+  });
+
+  it("rejects npm-reserved package names", () => {
+    expect(validateNpmPackageName("node_modules")).toBe(false);
+    expect(validateNpmPackageName("favicon.ico")).toBe(false);
+  });
+});
+
+describe("getDefaultDirectoryName", () => {
+  it("returns the package segment for scoped package names", () => {
+    expect(getDefaultDirectoryName("@scope/my-package")).toBe("my-package");
+  });
+
+  it("returns the original name for unscoped names", () => {
+    expect(getDefaultDirectoryName("my-package")).toBe("my-package");
   });
 });

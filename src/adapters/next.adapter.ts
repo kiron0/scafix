@@ -6,6 +6,7 @@ import type { CreateOptions, StackAdapter } from "../types/stack.js";
 import { CliExitError } from "../utils/cli-error.js";
 import { exec } from "../utils/exec.js";
 import { logger } from "../utils/logger.js";
+import { getDlxCommand } from "../utils/package-manager.js";
 import { validateDirectory, validateProjectName } from "../utils/validate.js";
 
 async function setupPrettier(
@@ -125,8 +126,8 @@ export const nextAdapter: StackAdapter = {
       yarn: {
         cmd: "yarn",
         args: [
-          "dlx",
-          "create-next-app@latest",
+          "create",
+          "next-app",
           directory,
           customizations.typescript ? "--ts" : "--js",
           customizations.eslint ? "--eslint" : "--no-eslint",
@@ -170,7 +171,8 @@ export const nextAdapter: StackAdapter = {
     if (customizations.shadcn) {
       logger.info("");
       logger.info("Initialising shadcn/ui...");
-      await exec("npx", ["shadcn@latest", "init"], {
+      const dlx = getDlxCommand(packageManager, "shadcn@latest", ["init"]);
+      await exec(dlx.cmd, dlx.args, {
         cwd: projectPath,
         stdio: "inherit",
       });

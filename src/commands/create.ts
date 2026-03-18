@@ -15,7 +15,12 @@ import {
   detectPackageManagerFromCwd,
   resolvePackageManagerOption,
 } from "../utils/package-manager.js";
-import { validateDirectory, validateProjectName } from "../utils/validate.js";
+import {
+  getDefaultDirectoryName,
+  validateDirectory,
+  validateNpmPackageName,
+  validateProjectName,
+} from "../utils/validate.js";
 
 export async function createCommand(
   stackId: string | undefined,
@@ -50,18 +55,23 @@ export async function createCommand(
       }
     }
 
-    if (!validateProjectName(projectName)) {
+    const isValidProjectName =
+      stackId === "npm"
+        ? validateNpmPackageName(projectName)
+        : validateProjectName(projectName);
+    if (!isValidProjectName) {
       throw new CliExitError(1);
     }
 
     // Prompt for directory
     const hasExplicitDirectory =
       typeof options.directory === "string" && options.directory.trim().length > 0;
+    const defaultDirectory = getDefaultDirectoryName(projectName);
     let directory = hasExplicitDirectory
       ? (options.directory as string)
-      : projectName;
+      : defaultDirectory;
     if (!hasExplicitDirectory && !options.yes) {
-      const dirResponse = await promptDirectory(projectName, {
+      const dirResponse = await promptDirectory(defaultDirectory, {
         yes: options.yes,
       });
       if (dirResponse) {

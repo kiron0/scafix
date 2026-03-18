@@ -76,6 +76,9 @@ describe.sequential("npmPackageAdapter", () => {
     expect(generatedPackageJson.scripts.build).toContain(
       "tsc --emitDeclarationOnly",
     );
+    expect(generatedPackageJson.scripts.test).toContain(
+      "node --experimental-vm-modules",
+    );
     expect(generatedPackageJson.scripts.prepublishOnly).toBe(
       generatedPackageJson.scripts.build,
     );
@@ -86,6 +89,9 @@ describe.sequential("npmPackageAdapter", () => {
     expect(generatedReadme).toContain("pnpm test");
     expect(generatedReadme).toContain("pnpm publish");
 
+    expect(await readFile(join(projectPath, "jest.config.cjs"), "utf8")).toContain(
+      "ts-jest/presets/default-esm",
+    );
     await expect(access(join(projectPath, ".eslintrc.cjs"))).resolves.toBeUndefined();
     await expect(access(join(projectPath, "jest.config.cjs"))).resolves.toBeUndefined();
     await expect(access(join(projectPath, ".eslintrc.js"))).rejects.toThrow();
@@ -114,5 +120,96 @@ describe.sequential("npmPackageAdapter", () => {
     expect(infoMessages).toContain("  bun run test");
     expect(infoMessages).toContain("  bun publish");
     expect(infoMessages).not.toContain("  bun install");
+  });
+
+  it("generates ESM-friendly JavaScript Jest tests", async () => {
+    mocks.promptNpmPackageCustomizations.mockResolvedValue({
+      typescript: false,
+      buildTool: "tsup",
+      eslint: false,
+      prettier: false,
+      testFramework: "jest",
+    });
+
+    await npmPackageAdapter.create({
+      directory: "demo-js-jest",
+      packageManager: "npm",
+      projectName: "demo-js-jest",
+      yes: true,
+    });
+
+    const projectPath = join(tempDir, "demo-js-jest");
+    const generatedPackageJson = JSON.parse(
+      await readFile(join(projectPath, "package.json"), "utf8"),
+    );
+    const generatedTest = await readFile(
+      join(projectPath, "src", "__tests__", "index.test.js"),
+      "utf8",
+    );
+
+    expect(generatedPackageJson.type).toBe("module");
+    expect(generatedPackageJson.scripts.test).toContain(
+      "node --experimental-vm-modules",
+    );
+    expect(generatedTest).toContain("import { greet } from '../index.js';");
+    expect(generatedTest).not.toContain("require(");
+  });
+
+  it("supports scoped package names while deriving a safe default directory", async () => {
+    mocks.promptNpmPackageCustomizations.mockResolvedValue({
+      typescript: false,
+      buildTool: "tsup",
+      eslint: false,
+      prettier: false,
+      testFramework: "none",
+    });
+
+    await npmPackageAdapter.create({
+      packageManager: "npm",
+      projectName: "@scope/demo-pkg",
+      yes: true,
+    });
+
+    const projectPath = join(tempDir, "demo-pkg");
+    const generatedPackageJson = JSON.parse(
+      await readFile(join(projectPath, "package.json"), "utf8"),
+    );
+
+    expect(generatedPackageJson.name).toBe("@scope/demo-pkg");
+    await expect(access(join(projectPath, "src", "index.js"))).resolves.toBeUndefined();
+  });
+
+  it("installs tslib for rollup-based TypeScript packages", async () => {
+    mocks.promptNpmPackageCustomizations.mockResolvedValue({
+      typescript: true,
+      buildTool: "rollup",
+      eslint: false,
+      prettier: false,
+      testFramework: "none",
+    });
+
+    await npmPackageAdapter.create({
+      directory: "demo-rollup",
+      packageManager: "pnpm",
+      projectName: "demo-rollup",
+      yes: true,
+    });
+
+    expect(mocks.exec).toHaveBeenCalledWith(
+      "pnpm",
+      [
+        "add",
+        "-D",
+        "typescript",
+        "@types/node",
+        "rollup",
+        "@rollup/plugin-typescript",
+        "tslib",
+      ],
+      expect.objectContaining({
+        cwd: join(tempDir, "demo-rollup"),
+        stdio: "inherit",
+      }),
+    );
   });
 });

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getAddCommand,
   getDevCommand,
+  getDlxCommand,
   getInstallCommand,
   getPublishCommand,
   getRunCommand,
@@ -67,6 +68,36 @@ describe("getRunCommand", () => {
 describe("getPublishCommand", () => {
   it.each(packageManagers)("returns correct publish command for %s", (pm) => {
     expect(getPublishCommand(pm)).toBe(`${pm} publish`);
+  });
+});
+
+describe("getDlxCommand", () => {
+  it("returns npx for npm", () => {
+    expect(getDlxCommand("npm", "shadcn@latest", ["init"])).toEqual({
+      cmd: "npx",
+      args: ["shadcn@latest", "init"],
+    });
+  });
+
+  it("returns pnpm dlx for pnpm", () => {
+    expect(getDlxCommand("pnpm", "shadcn@latest", ["init"])).toEqual({
+      cmd: "pnpm",
+      args: ["dlx", "shadcn@latest", "init"],
+    });
+  });
+
+  it("returns npx for yarn to match classic node_modules workflows", () => {
+    expect(getDlxCommand("yarn", "shadcn@latest", ["init"])).toEqual({
+      cmd: "npx",
+      args: ["shadcn@latest", "init"],
+    });
+  });
+
+  it("returns bunx for bun", () => {
+    expect(getDlxCommand("bun", "shadcn@latest", ["init"])).toEqual({
+      cmd: "bunx",
+      args: ["shadcn@latest", "init"],
+    });
   });
 });
 

@@ -48,6 +48,8 @@ describe.sequential("nextAdapter", () => {
       const projectName =
         args[0] === "create-next-app@latest"
           ? (args[1] as string)
+          : args[0] === "create" && args[1] === "next-app"
+            ? (args[2] as string)
           : args[1] === "create-next-app@latest"
             ? (args[2] as string)
             : undefined;
@@ -109,6 +111,108 @@ describe.sequential("nextAdapter", () => {
     );
   });
 
+  it.each([
+    {
+      args: [
+        "create-next-app@latest",
+        "demo-next-npm",
+        "--ts",
+        "--eslint",
+        "--app",
+        "--src-dir",
+        "--tailwind",
+        "--import-alias",
+        "@/*",
+        "--use-npm",
+        "--yes",
+      ],
+      cmd: "npx",
+      packageManager: "npm",
+    },
+    {
+      args: [
+        "dlx",
+        "create-next-app@latest",
+        "demo-next-pnpm",
+        "--ts",
+        "--eslint",
+        "--app",
+        "--src-dir",
+        "--tailwind",
+        "--import-alias",
+        "@/*",
+        "--use-pnpm",
+        "--yes",
+      ],
+      cmd: "pnpm",
+      packageManager: "pnpm",
+    },
+    {
+      args: [
+        "create",
+        "next-app",
+        "demo-next-yarn",
+        "--ts",
+        "--eslint",
+        "--app",
+        "--src-dir",
+        "--tailwind",
+        "--import-alias",
+        "@/*",
+        "--use-yarn",
+        "--yes",
+      ],
+      cmd: "yarn",
+      packageManager: "yarn",
+    },
+    {
+      args: [
+        "create-next-app@latest",
+        "demo-next-bun",
+        "--ts",
+        "--eslint",
+        "--app",
+        "--src-dir",
+        "--tailwind",
+        "--import-alias",
+        "@/*",
+        "--use-bun",
+        "--yes",
+      ],
+      cmd: "bunx",
+      packageManager: "bun",
+    },
+  ])(
+    "covers the Next.js external CLI command mapping for $packageManager",
+    async ({ args, cmd, packageManager }) => {
+      mocks.promptNextCustomizations.mockResolvedValue({
+        appRouter: true,
+        eslint: true,
+        prettier: false,
+        shadcn: false,
+        srcDir: true,
+        tailwind: true,
+        typescript: true,
+      });
+
+      const projectName = `demo-next-${packageManager}`;
+      await nextAdapter.create({
+        packageManager,
+        projectName,
+        yes: true,
+      });
+
+      expect(mocks.exec).toHaveBeenCalledWith(
+        cmd,
+        args,
+        expect.objectContaining({
+          cwd: tempDir,
+          stdio: "inherit",
+        }),
+      );
+    },
+  );
+
   it("adds prettier and shadcn when requested", async () => {
     mocks.promptNextCustomizations.mockResolvedValue({
       appRouter: true,
@@ -157,7 +261,7 @@ describe.sequential("nextAdapter", () => {
       }),
     );
     expect(mocks.exec).toHaveBeenCalledWith(
-      "npx",
+      "bunx",
       ["shadcn@latest", "init"],
       expect.objectContaining({
         cwd: projectPath,
@@ -165,5 +269,55 @@ describe.sequential("nextAdapter", () => {
       }),
     );
     await expect(access(join(projectPath, ".prettierrc"))).resolves.toBeUndefined();
+  });
+
+  it("uses yarn classic commands for Next.js scaffolding and follow-up tooling", async () => {
+    mocks.promptNextCustomizations.mockResolvedValue({
+      appRouter: true,
+      eslint: true,
+      prettier: false,
+      shadcn: true,
+      srcDir: true,
+      tailwind: true,
+      typescript: true,
+    });
+
+    await nextAdapter.create({
+      directory: "demo-next-yarn",
+      packageManager: "yarn",
+      projectName: "demo-next-yarn",
+    });
+
+    const projectPath = join(tempDir, "demo-next-yarn");
+
+    expect(mocks.exec).toHaveBeenCalledWith(
+      "yarn",
+      [
+        "create",
+        "next-app",
+        "demo-next-yarn",
+        "--ts",
+        "--eslint",
+        "--app",
+        "--src-dir",
+        "--tailwind",
+        "--import-alias",
+        "@/*",
+        "--use-yarn",
+        "--yes",
+      ],
+      expect.objectContaining({
+        cwd: tempDir,
+        stdio: "inherit",
+      }),
+    );
+    expect(mocks.exec).toHaveBeenCalledWith(
+      "npx",
+      ["shadcn@latest", "init"],
+      expect.objectContaining({
+        cwd: projectPath,
+        stdio: "inherit",
+      }),
+    );
   });
 });

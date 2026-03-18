@@ -11,7 +11,11 @@ import {
   getPublishCommand,
   getRunCommand,
 } from "../utils/package-manager.js";
-import { validateDirectory, validateProjectName } from "../utils/validate.js";
+import {
+  getDefaultDirectoryName,
+  validateDirectory,
+  validateNpmPackageName,
+} from "../utils/validate.js";
 
 export const npmPackageAdapter: StackAdapter = {
   id: "npm",
@@ -20,14 +24,14 @@ export const npmPackageAdapter: StackAdapter = {
   backend: false,
 
   async create(options: CreateOptions): Promise<void> {
-    const {
-      projectName,
-      directory = projectName,
-      packageManager = "npm",
-    } = options;
+    const { projectName, packageManager = "npm" } = options;
+    const directory =
+      typeof options.directory === "string" && options.directory.trim().length > 0
+        ? options.directory
+        : getDefaultDirectoryName(projectName);
 
-    if (!validateProjectName(projectName)) {
-      throw new Error("Invalid project name");
+    if (!validateNpmPackageName(projectName)) {
+      throw new Error("Invalid npm package name");
     }
 
     const projectPath = join(process.cwd(), directory);
@@ -131,8 +135,10 @@ export const npmPackageAdapter: StackAdapter = {
         packageJson.scripts.test = "vitest";
         packageJson.scripts["test:watch"] = "vitest --watch";
       } else if (customizations.testFramework === "jest") {
-        packageJson.scripts.test = "jest";
-        packageJson.scripts["test:watch"] = "jest --watch";
+        packageJson.scripts.test =
+          "node --experimental-vm-modules ./node_modules/jest/bin/jest.js";
+        packageJson.scripts["test:watch"] =
+          "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --watch";
       }
 
       await writeFile(
@@ -349,7 +355,7 @@ coverage
         if (customizations.buildTool === "tsup") {
           devDependencies.push("tsup");
         } else if (customizations.buildTool === "rollup") {
-          devDependencies.push("rollup", "@rollup/plugin-typescript");
+          devDependencies.push("rollup", "@rollup/plugin-typescript", "tslib");
         } else if (customizations.buildTool === "esbuild") {
           devDependencies.push("esbuild");
         }
@@ -527,15 +533,7 @@ export default defineConfig({
             );
           } else {
             // Jest
-            const testContent = `const { greet } = require('../index.js');
-
-describe('greet', () => {
-  it('should return a greeting message', () => {
-    expect(greet('World')).toBe('Hello, World!');
-  });
-});
-`;
-            const tsTestContent = `import { greet } from '../index.js';
+            const testContent = `import { greet } from '../index.js';
 
 describe('greet', () => {
   it('should return a greeting message', () => {
@@ -545,17 +543,21 @@ describe('greet', () => {
 `;
             await writeFile(
               join(projectPath, "src", "__tests__", testFile),
-              customizations.typescript ? tsTestContent : testContent,
+              testContent,
             );
 
             const jestConfig = customizations.typescript
               ? `/** @type {import('jest').Config} */
 module.exports = {
-  preset: 'ts-jest',
+  preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
+  extensionsToTreatAsEsm: ['.ts'],
   moduleFileExtensions: ['ts', 'js'],
+  moduleNameMapper: {
+    '^(\\\\.{1,2}/.*)\\\\.js$': '$1',
+  },
   transform: {
-    '^.+\\.ts$': 'ts-jest',
+    '^.+\\\\.ts$': ['ts-jest', { useESM: true }],
   },
 };
 `

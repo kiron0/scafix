@@ -115,7 +115,17 @@ describe.sequential("viteReactAdapter", () => {
     );
     expect(mocks.exec).toHaveBeenCalledWith(
       "pnpm",
-      ["add", "-D", "tailwindcss", "postcss", "autoprefixer"],
+      ["add", "-D", "tailwindcss@^3", "postcss", "autoprefixer"],
+      expect.objectContaining({
+        cwd: projectPath,
+        stdio: "pipe",
+      }),
+    );
+    expect(mocks.exec).toHaveBeenCalledWith(
+      process.platform === "win32"
+        ? join(projectPath, "node_modules", ".bin", "tailwindcss.cmd")
+        : join(projectPath, "node_modules", ".bin", "tailwindcss"),
+      ["init", "-p"],
       expect.objectContaining({
         cwd: projectPath,
         stdio: "pipe",
@@ -134,4 +144,78 @@ describe.sequential("viteReactAdapter", () => {
       "@tailwind base;",
     );
   });
+
+  it("uses the selected package manager to run shadcn for bun projects", async () => {
+    mocks.promptViteReactCustomizations.mockResolvedValue({
+      prettier: false,
+      shadcn: true,
+      tailwind: true,
+      tailwindVersion: "v4",
+      typescript: true,
+    });
+
+    await viteReactAdapter.create({
+      directory: "demo-vite-bun",
+      packageManager: "bun",
+      projectName: "demo-vite-bun",
+    });
+
+    expect(mocks.exec).toHaveBeenCalledWith(
+      "bunx",
+      ["shadcn@latest", "init"],
+      expect.objectContaining({
+        cwd: join(tempDir, "demo-vite-bun"),
+        stdio: "inherit",
+      }),
+    );
+  });
+
+  it.each([
+    {
+      args: ["create", "vite@latest", "demo-vite-npm", "--", "--template", "react-ts"],
+      cmd: "npm",
+      packageManager: "npm",
+    },
+    {
+      args: ["create", "vite", "demo-vite-pnpm", "--template", "react-ts"],
+      cmd: "pnpm",
+      packageManager: "pnpm",
+    },
+    {
+      args: ["create", "vite", "demo-vite-yarn", "--template", "react-ts"],
+      cmd: "yarn",
+      packageManager: "yarn",
+    },
+    {
+      args: ["create", "vite", "demo-vite-bun", "--template", "react-ts"],
+      cmd: "bun",
+      packageManager: "bun",
+    },
+  ])(
+    "covers the Vite external CLI command mapping for $packageManager",
+    async ({ args, cmd, packageManager }) => {
+      mocks.promptViteReactCustomizations.mockResolvedValue({
+        prettier: false,
+        shadcn: false,
+        tailwind: false,
+        typescript: true,
+      });
+
+      const projectName = `demo-vite-${packageManager}`;
+      await viteReactAdapter.create({
+        packageManager,
+        projectName,
+        yes: true,
+      });
+
+      expect(mocks.exec).toHaveBeenCalledWith(
+        cmd,
+        args,
+        expect.objectContaining({
+          cwd: tempDir,
+          stdio: "inherit",
+        }),
+      );
+    },
+  );
 });

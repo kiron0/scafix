@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   detectPackageManagerFromCwd: vi.fn(),
   exec: vi.fn(),
+  getDefaultDirectoryName: vi.fn(),
   getAdapterById: vi.fn(),
   logger: {
     debug: vi.fn(),
@@ -18,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   promptPackageManager: vi.fn(),
   promptProjectName: vi.fn(),
   validateDirectory: vi.fn(),
+  validateNpmPackageName: vi.fn(),
   validateProjectName: vi.fn(),
 }));
 
@@ -56,7 +58,9 @@ vi.mock("../../src/utils/package-manager.js", async () => {
 });
 
 vi.mock("../../src/utils/validate.js", () => ({
+  getDefaultDirectoryName: mocks.getDefaultDirectoryName,
   validateDirectory: mocks.validateDirectory,
+  validateNpmPackageName: mocks.validateNpmPackageName,
   validateProjectName: mocks.validateProjectName,
 }));
 
@@ -74,11 +78,13 @@ describe("createCommand", () => {
     mocks.promptGit.mockResolvedValue(false);
     mocks.promptPackageManager.mockResolvedValue("npm");
     mocks.promptProjectName.mockResolvedValue("demo-app");
+    mocks.getDefaultDirectoryName.mockImplementation((name: string) => name);
     mocks.validateDirectory.mockReturnValue({
       exists: false,
       path: "/tmp/demo-app",
       valid: true,
     });
+    mocks.validateNpmPackageName.mockReturnValue(true);
     mocks.validateProjectName.mockReturnValue(true);
   });
 
@@ -139,6 +145,30 @@ describe("createCommand", () => {
     expect(mocks.create).not.toHaveBeenCalled();
     expect(mocks.logger.error).toHaveBeenCalledWith(
       "Unsupported package manager: pip",
+    );
+  });
+
+  it("uses npm package validation and derives a safe directory for scoped packages", async () => {
+    mocks.getAdapterById.mockReturnValue({
+      id: "npm",
+      name: "NPM Package",
+      description: "test adapter",
+      create: mocks.create,
+    });
+    mocks.getDefaultDirectoryName.mockReturnValue("demo-pkg");
+
+    await createCommand("npm", {
+      name: "@scope/demo-pkg",
+      yes: true,
+    });
+
+    expect(mocks.validateNpmPackageName).toHaveBeenCalledWith("@scope/demo-pkg");
+    expect(mocks.validateProjectName).not.toHaveBeenCalledWith("@scope/demo-pkg");
+    expect(mocks.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        directory: "demo-pkg",
+        projectName: "@scope/demo-pkg",
+      }),
     );
   });
 });

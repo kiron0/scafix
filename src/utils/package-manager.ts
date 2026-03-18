@@ -118,3 +118,35 @@ export function getRunCommand(pm: PackageManager, script: string): string {
 export function getPublishCommand(pm: PackageManager): string {
   return `${pm} publish`;
 }
+
+export function getDlxCommand(
+  pm: PackageManager,
+  pkg: string,
+  args: string[] = [],
+): { cmd: string; args: string[] } {
+  if (pm === "pnpm") {
+    return {
+      cmd: "pnpm",
+      args: ["dlx", pkg, ...args],
+    };
+  }
+
+  if (pm === "yarn") {
+    return {
+      cmd: "npx",
+      args: [pkg, ...args],
+    };
+  }
+
+  if (pm === "bun") {
+    return {
+      cmd: "bunx",
+      args: [pkg, ...args],
+    };
+  }
+
+  return {
+    cmd: "npx",
+    args: [pkg, ...args],
+  };
+}
