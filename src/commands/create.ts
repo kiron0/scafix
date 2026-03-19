@@ -22,6 +22,10 @@ import {
   validateProjectName,
 } from '../utils/validate.js';
 
+function requiresNpmSafeProjectName(stackId: string): boolean {
+  return stackId === 'npm' || stackId === 'express';
+}
+
 export async function createCommand(
   stackId: string | undefined,
   options: CliOptions = {}
@@ -53,8 +57,9 @@ export async function createCommand(
       }
     }
 
-    const isValidProjectName =
-      stackId === 'npm' ? validateNpmPackageName(projectName) : validateProjectName(projectName);
+    const isValidProjectName = requiresNpmSafeProjectName(stackId)
+      ? validateNpmPackageName(projectName)
+      : validateProjectName(projectName);
     if (!isValidProjectName) {
       throw new CliExitError(1);
     }

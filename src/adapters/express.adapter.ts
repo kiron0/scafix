@@ -8,7 +8,7 @@ import { exec } from '../utils/exec.js';
 import { getEslintPackages } from '../utils/eslint.js';
 import { logger } from '../utils/logger.js';
 import { detectPackageManager, getDevCommand } from '../utils/package-manager.js';
-import { validateDirectory, validateProjectName } from '../utils/validate.js';
+import { validateDirectory, validateNpmPackageName } from '../utils/validate.js';
 
 function resolveBooleanOverride(value: unknown): boolean | undefined {
   return typeof value === 'boolean' ? value : undefined;
@@ -657,8 +657,8 @@ export const expressAdapter: StackAdapter = {
   async create(options: CreateOptions): Promise<void> {
     const { projectName, directory = projectName, packageManager = 'npm', yes = false } = options;
 
-    if (!validateProjectName(projectName)) {
-      throw new Error('Invalid project name');
+    if (!validateNpmPackageName(projectName)) {
+      throw new Error('Invalid npm package name');
     }
 
     const projectPath = join(process.cwd(), directory);

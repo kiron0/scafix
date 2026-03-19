@@ -1,10 +1,12 @@
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { APP_CONFIG } from '../../src/config/index.js';
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const cliEntry = join(packageRoot, 'dist', 'index.js');
+const cliEntryUrl = pathToFileURL(cliEntry).href;
 
 function runCli(args: string[]) {
   return spawnSync(process.execPath, [cliEntry, ...args], {
@@ -42,5 +44,39 @@ describe.sequential('built CLI root wiring', () => {
       'Non-interactive usage requires an explicit stack: use `scafix create <stack> --yes`.'
     );
     expect(result.stderr).not.toContain("unknown option '--yes'");
+  });
+
+  it('exits with code 130 when interrupted with SIGINT', async () => {
+    const child = spawn(
+      process.execPath,
+      [
+        '-e',
+        `setInterval(() => {}, 1000); import(${JSON.stringify(cliEntryUrl)}).catch((error) => { console.error(error); process.exit(1); });`,
+      ],
+      {
+        cwd: packageRoot,
+        encoding: 'utf8',
+        stdio: 'pipe',
+      }
+    );
+
+    const stdoutChunks: string[] = [];
+    const stderrChunks: string[] = [];
+    child.stdout.on('data', (chunk) => stdoutChunks.push(String(chunk)));
+    child.stderr.on('data', (chunk) => stderrChunks.push(String(chunk)));
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    child.kill('SIGINT');
+
+    const result = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
+      (resolve) => {
+        child.on('exit', (code, signal) => resolve({ code, signal }));
+      }
+    );
+
+    expect(result.signal).toBeNull();
+    expect(result.code).toBe(130);
+    expect(stdoutChunks.join('')).toContain(APP_CONFIG.thankYouMessage);
+    expect(stderrChunks.join('')).not.toContain('Error:');
   });
 });

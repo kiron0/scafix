@@ -221,4 +221,18 @@ describe.sequential('expressAdapter', () => {
     await expect(access(join(projectPath, 'src', 'routes', 'index.js'))).resolves.toBeUndefined();
     await expect(access(join(projectPath, 'src', 'controllers', 'example.js'))).rejects.toThrow();
   });
+
+  it('rejects express project names that are not valid npm package names', async () => {
+    await expect(
+      expressAdapter.create({
+        directory: 'demo-express-invalid',
+        packageManager: 'npm',
+        projectName: 'My Express App',
+        yes: true,
+      })
+    ).rejects.toThrow('Invalid npm package name');
+
+    expect(mocks.promptExpressCustomizations).not.toHaveBeenCalled();
+    expect(mocks.exec).not.toHaveBeenCalled();
+  });
 });

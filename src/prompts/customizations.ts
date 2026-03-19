@@ -1,4 +1,7 @@
-import { select, confirm } from '@clack/prompts';
+import { cancel, confirm, select } from '@clack/prompts';
+import chalk from 'chalk';
+import { APP_CONFIG } from '../config/index.js';
+import { CliExitError } from '../utils/cli-error.js';
 import { logger } from '../utils/logger.js';
 
 export interface ViteReactCustomizations {
@@ -37,6 +40,24 @@ export interface NpmPackageCustomizations {
   testFramework: 'vitest' | 'jest' | 'none';
 }
 
+function isPromptCancelledError(error: unknown): boolean {
+  return error instanceof Error && error.message === 'Prompt cancelled';
+}
+
+function unwrapPromptResponse<T>(response: T | symbol | undefined | null): T | undefined {
+  if (typeof response === 'symbol') {
+    throw new Error('Prompt cancelled');
+  }
+
+  return response ?? undefined;
+}
+
+function abortCustomizationPrompt(error: unknown): never {
+  logger.debug(`Prompt cancelled: ${error}`);
+  cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
+  throw new CliExitError(130);
+}
+
 export async function promptViteReactCustomizations(
   options: { yes?: boolean } = {}
 ): Promise<ViteReactCustomizations> {
@@ -65,20 +86,14 @@ export async function promptViteReactCustomizations(
         { label: 'No (JavaScript)', value: false },
       ],
     });
-    if (typeof tsResponse === 'symbol') {
-      throw new Error('Prompt cancelled');
-    }
-    customizations.typescript = tsResponse ?? true;
+    customizations.typescript = unwrapPromptResponse(tsResponse) ?? true;
 
     // Tailwind CSS
     const tailwindResponse = await confirm({
       message: 'Add Tailwind CSS?',
       initialValue: false,
     });
-    if (typeof tailwindResponse === 'symbol') {
-      throw new Error('Prompt cancelled');
-    }
-    customizations.tailwind = tailwindResponse ?? false;
+    customizations.tailwind = unwrapPromptResponse(tailwindResponse) ?? false;
 
     if (customizations.tailwind) {
       const tailwindVersionResponse = await select({
@@ -88,10 +103,7 @@ export async function promptViteReactCustomizations(
           { label: 'v3 (Stable)', value: 'v3' },
         ],
       });
-      if (typeof tailwindVersionResponse === 'symbol') {
-        throw new Error('Prompt cancelled');
-      }
-      customizations.tailwindVersion = tailwindVersionResponse ?? 'v4';
+      customizations.tailwindVersion = unwrapPromptResponse(tailwindVersionResponse) ?? 'v4';
     }
 
     // Shadcn UI
@@ -100,10 +112,7 @@ export async function promptViteReactCustomizations(
         message: 'Add shadcn/ui?',
         initialValue: false,
       });
-      if (typeof shadcnResponse === 'symbol') {
-        throw new Error('Prompt cancelled');
-      }
-      customizations.shadcn = shadcnResponse ?? false;
+      customizations.shadcn = unwrapPromptResponse(shadcnResponse) ?? false;
     }
 
     // Prettier
@@ -111,20 +120,15 @@ export async function promptViteReactCustomizations(
       message: 'Add Prettier?',
       initialValue: false,
     });
-    if (typeof prettierResponse === 'symbol') {
-      throw new Error('Prompt cancelled');
-    }
-    customizations.prettier = prettierResponse ?? false;
+    customizations.prettier = unwrapPromptResponse(prettierResponse) ?? false;
 
     return customizations;
   } catch (error) {
-    logger.debug(`Prompt cancelled: ${error}`);
-    return {
-      typescript: true,
-      tailwind: false,
-      shadcn: false,
-      prettier: false,
-    };
+    if (isPromptCancelledError(error)) {
+      abortCustomizationPrompt(error);
+    }
+
+    throw error;
   }
 }
 
@@ -162,20 +166,14 @@ export async function promptNextCustomizations(
         { label: 'No (JavaScript)', value: false },
       ],
     });
-    if (typeof tsResponse === 'symbol') {
-      throw new Error('Prompt cancelled');
-    }
-    customizations.typescript = tsResponse ?? true;
+    customizations.typescript = unwrapPromptResponse(tsResponse) ?? true;
 
     // Tailwind CSS
     const tailwindResponse = await confirm({
       message: 'Add Tailwind CSS?',
       initialValue: true,
     });
-    if (typeof tailwindResponse === 'symbol') {
-      throw new Error('Prompt cancelled');
-    }
-    customizations.tailwind = tailwindResponse ?? true;
+    customizations.tailwind = unwrapPromptResponse(tailwindResponse) ?? true;
 
     // Shadcn UI
     if (customizations.tailwind) {
@@ -183,10 +181,7 @@ export async function promptNextCustomizations(
         message: 'Add shadcn/ui?',
         initialValue: false,
       });
-      if (typeof shadcnResponse === 'symbol') {
-        throw new Error('Prompt cancelled');
-      }
-      customizations.shadcn = shadcnResponse ?? false;
+      customizations.shadcn = unwrapPromptResponse(shadcnResponse) ?? false;
     }
 
     // ESLint
@@ -194,53 +189,36 @@ export async function promptNextCustomizations(
       message: 'Add ESLint?',
       initialValue: true,
     });
-    if (typeof eslintResponse === 'symbol') {
-      throw new Error('Prompt cancelled');
-    }
-    customizations.eslint = eslintResponse ?? true;
+    customizations.eslint = unwrapPromptResponse(eslintResponse) ?? true;
 
     // Prettier
     const prettierResponse = await confirm({
       message: 'Add Prettier?',
       initialValue: false,
     });
-    if (typeof prettierResponse === 'symbol') {
-      throw new Error('Prompt cancelled');
-    }
-    customizations.prettier = prettierResponse ?? false;
+    customizations.prettier = unwrapPromptResponse(prettierResponse) ?? false;
 
     // App Router
     const appRouterResponse = await confirm({
       message: 'Use App Router?',
       initialValue: true,
     });
-    if (typeof appRouterResponse === 'symbol') {
-      throw new Error('Prompt cancelled');
-    }
-    customizations.appRouter = appRouterResponse ?? true;
+    customizations.appRouter = unwrapPromptResponse(appRouterResponse) ?? true;
 
     // src directory
     const srcDirResponse = await confirm({
       message: 'Use src/ directory?',
       initialValue: true,
     });
-    if (typeof srcDirResponse === 'symbol') {
-      throw new Error('Prompt cancelled');
-    }
-    customizations.srcDir = srcDirResponse ?? true;
+    customizations.srcDir = unwrapPromptResponse(srcDirResponse) ?? true;
 
     return customizations;
   } catch (error) {
-    logger.debug(`Prompt cancelled: ${error}`);
-    return {
-      typescript: true,
-      tailwind: true,
-      shadcn: false,
-      eslint: true,
-      prettier: false,
-      appRouter: true,
-      srcDir: true,
-    };
+    if (isPromptCancelledError(error)) {
+      abortCustomizationPrompt(error);
+    }
+
+    throw error;
   }
 }
 
@@ -278,10 +256,7 @@ export async function promptExpressCustomizations(
         { label: 'No (JavaScript)', value: false },
       ],
     });
-    if (typeof tsResponse === 'symbol') {
-      throw new Error('Prompt cancelled');
-    }
-    customizations.typescript = tsResponse ?? true;
+    customizations.typescript = unwrapPromptResponse(tsResponse) ?? true;
 
     // Architecture Pattern
     const patternResponse = await select({
@@ -309,73 +284,50 @@ export async function promptExpressCustomizations(
         },
       ],
     });
-    if (typeof patternResponse === 'symbol') {
-      throw new Error('Prompt cancelled');
-    }
-    customizations.pattern = patternResponse ?? 'mvc';
+    customizations.pattern = unwrapPromptResponse(patternResponse) ?? 'mvc';
 
     // ESLint
     const eslintResponse = await confirm({
       message: 'Add ESLint?',
       initialValue: true,
     });
-    if (typeof eslintResponse === 'symbol') {
-      throw new Error('Prompt cancelled');
-    }
-    customizations.eslint = eslintResponse ?? true;
+    customizations.eslint = unwrapPromptResponse(eslintResponse) ?? true;
 
     // Prettier
     const prettierResponse = await confirm({
       message: 'Add Prettier?',
       initialValue: false,
     });
-    if (typeof prettierResponse === 'symbol') {
-      throw new Error('Prompt cancelled');
-    }
-    customizations.prettier = prettierResponse ?? false;
+    customizations.prettier = unwrapPromptResponse(prettierResponse) ?? false;
 
     // CORS
     const corsResponse = await confirm({
       message: 'Add CORS support?',
       initialValue: false,
     });
-    if (typeof corsResponse === 'symbol') {
-      throw new Error('Prompt cancelled');
-    }
-    customizations.cors = corsResponse ?? false;
+    customizations.cors = unwrapPromptResponse(corsResponse) ?? false;
 
     // Helmet
     const helmetResponse = await confirm({
       message: 'Add Helmet (security headers)?',
       initialValue: false,
     });
-    if (typeof helmetResponse === 'symbol') {
-      throw new Error('Prompt cancelled');
-    }
-    customizations.helmet = helmetResponse ?? false;
+    customizations.helmet = unwrapPromptResponse(helmetResponse) ?? false;
 
     // dotenv
     const dotenvResponse = await confirm({
       message: 'Add dotenv for environment variables?',
       initialValue: true,
     });
-    if (typeof dotenvResponse === 'symbol') {
-      throw new Error('Prompt cancelled');
-    }
-    customizations.dotenv = dotenvResponse ?? true;
+    customizations.dotenv = unwrapPromptResponse(dotenvResponse) ?? true;
 
     return customizations;
   } catch (error) {
-    logger.debug(`Prompt cancelled: ${error}`);
-    return {
-      typescript: true,
-      pattern: 'mvc',
-      eslint: true,
-      prettier: false,
-      cors: false,
-      helmet: false,
-      dotenv: true,
-    };
+    if (isPromptCancelledError(error)) {
+      abortCustomizationPrompt(error);
+    }
+
+    throw error;
   }
 }
 
@@ -409,10 +361,7 @@ export async function promptNpmPackageCustomizations(
         { label: 'No (JavaScript)', value: false },
       ],
     });
-    if (typeof tsResponse === 'symbol') {
-      throw new Error('Prompt cancelled');
-    }
-    customizations.typescript = tsResponse ?? true;
+    customizations.typescript = unwrapPromptResponse(tsResponse) ?? true;
 
     // Build tool (only ask if TypeScript is selected)
     if (customizations.typescript) {
@@ -441,10 +390,7 @@ export async function promptNpmPackageCustomizations(
           },
         ],
       });
-      if (typeof buildToolResponse === 'symbol') {
-        throw new Error('Prompt cancelled');
-      }
-      customizations.buildTool = buildToolResponse ?? 'tsup';
+      customizations.buildTool = unwrapPromptResponse(buildToolResponse) ?? 'tsup';
     }
 
     // ESLint
@@ -452,20 +398,14 @@ export async function promptNpmPackageCustomizations(
       message: 'Add ESLint?',
       initialValue: true,
     });
-    if (typeof eslintResponse === 'symbol') {
-      throw new Error('Prompt cancelled');
-    }
-    customizations.eslint = eslintResponse ?? true;
+    customizations.eslint = unwrapPromptResponse(eslintResponse) ?? true;
 
     // Prettier
     const prettierResponse = await confirm({
       message: 'Add Prettier?',
       initialValue: false,
     });
-    if (typeof prettierResponse === 'symbol') {
-      throw new Error('Prompt cancelled');
-    }
-    customizations.prettier = prettierResponse ?? false;
+    customizations.prettier = unwrapPromptResponse(prettierResponse) ?? false;
 
     // Test framework
     const testFrameworkResponse = await select({
@@ -484,21 +424,16 @@ export async function promptNpmPackageCustomizations(
         },
       ],
     });
-    if (typeof testFrameworkResponse === 'symbol') {
-      throw new Error('Prompt cancelled');
-    }
     customizations.testFramework =
-      (testFrameworkResponse as NpmPackageCustomizations['testFramework']) ?? 'none';
+      (unwrapPromptResponse(testFrameworkResponse) as NpmPackageCustomizations['testFramework']) ??
+      'none';
 
     return customizations;
   } catch (error) {
-    logger.debug(`Prompt cancelled: ${error}`);
-    return {
-      typescript: true,
-      buildTool: 'tsup',
-      eslint: true,
-      prettier: false,
-      testFramework: 'none',
-    };
+    if (isPromptCancelledError(error)) {
+      abortCustomizationPrompt(error);
+    }
+
+    throw error;
   }
 }

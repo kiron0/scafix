@@ -188,4 +188,26 @@ describe('initCommand', () => {
       })
     );
   });
+
+  it('uses npm-safe validation for express project names', async () => {
+    const expressAdapter = {
+      backend: false,
+      create: vi.fn(),
+      description: 'test adapter',
+      id: 'express',
+      name: 'Express',
+    };
+    mocks.selectStack.mockResolvedValue(expressAdapter);
+    mocks.validateNpmPackageName.mockReturnValue(false);
+
+    await expect(
+      initCommand({
+        name: 'My Express App',
+      })
+    ).rejects.toBeInstanceOf(CliExitError);
+
+    expect(mocks.validateNpmPackageName).toHaveBeenCalledWith('My Express App');
+    expect(mocks.validateProjectName).not.toHaveBeenCalledWith('My Express App');
+    expect(expressAdapter.create).not.toHaveBeenCalled();
+  });
 });

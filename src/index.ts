@@ -9,7 +9,7 @@ import { logger } from './utils/logger.js';
 
 process.on('SIGINT', () => {
   console.log('\n' + chalk.cyan(APP_CONFIG.thankYouMessage));
-  process.exit(0);
+  process.exit(130);
 });
 
 const program = new Command();
