@@ -1,9 +1,9 @@
 export class CliExitError extends Error {
   exitCode: number;
 
-  constructor(exitCode: number, message = "") {
+  constructor(exitCode: number, message = '') {
     super(message);
-    this.name = "CliExitError";
+    this.name = 'CliExitError';
     this.exitCode = exitCode;
   }
 }

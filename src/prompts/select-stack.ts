@@ -1,22 +1,20 @@
-import { cancel, confirm, select, text } from "@clack/prompts";
-import chalk from "chalk";
-import { APP_CONFIG } from "../config/index.js";
-import { StackAdapter } from "../types/stack.js";
+import { cancel, confirm, select, text } from '@clack/prompts';
+import chalk from 'chalk';
+import { APP_CONFIG } from '../config/index.js';
+import { StackAdapter } from '../types/stack.js';
 
-export async function selectStack(
-  adapters: StackAdapter[],
-): Promise<StackAdapter | null> {
+export async function selectStack(adapters: StackAdapter[]): Promise<StackAdapter | null> {
   try {
     const response = await select({
-      message: "Select a stack:",
+      message: 'Select a stack:',
       options: adapters.map((adapter) => ({
-        label: `${adapter.name}${adapter.backend ? " (Backend)" : ""}`,
+        label: `${adapter.name}${adapter.backend ? ' (Backend)' : ''}`,
         hint: adapter.description,
         value: adapter,
       })),
     });
 
-    if (typeof response === "symbol") {
+    if (typeof response === 'symbol') {
       cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
       return null;
     }
@@ -29,7 +27,7 @@ export async function selectStack(
 }
 
 export async function promptProjectName(
-  options: { yes?: boolean; default?: string } = {},
+  options: { yes?: boolean; default?: string } = {}
 ): Promise<string | null> {
   if (options.yes && options.default) {
     return options.default;
@@ -37,17 +35,17 @@ export async function promptProjectName(
 
   try {
     const response = await text({
-      message: "Project name:",
-      initialValue: options.default || "my-project",
+      message: 'Project name:',
+      initialValue: options.default || 'my-project',
       validate: (value) => {
         if (!value || value.trim().length === 0) {
-          return "Project name cannot be empty";
+          return 'Project name cannot be empty';
         }
         return;
       },
     });
 
-    if (typeof response === "symbol") {
+    if (typeof response === 'symbol') {
       cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
       return null;
     }
@@ -61,7 +59,7 @@ export async function promptProjectName(
 
 export async function promptDirectory(
   projectName: string,
-  options: { yes?: boolean } = {},
+  options: { yes?: boolean } = {}
 ): Promise<string | null> {
   if (options.yes) {
     return projectName;
@@ -69,17 +67,17 @@ export async function promptDirectory(
 
   try {
     const response = await text({
-      message: "Directory:",
+      message: 'Directory:',
       initialValue: projectName,
       validate: (value) => {
         if (!value || value.trim().length === 0) {
-          return "Directory cannot be empty";
+          return 'Directory cannot be empty';
         }
         return;
       },
     });
 
-    if (typeof response === "symbol") {
+    if (typeof response === 'symbol') {
       cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
       return null;
     }
@@ -92,24 +90,24 @@ export async function promptDirectory(
 }
 
 export async function promptPackageManager(
-  options: { yes?: boolean } = {},
-): Promise<"npm" | "pnpm" | "yarn" | "bun" | null> {
+  options: { yes?: boolean } = {}
+): Promise<'npm' | 'pnpm' | 'yarn' | 'bun' | null> {
   if (options.yes) {
-    return "npm";
+    return 'npm';
   }
 
   try {
     const response = await select({
-      message: "Package manager:",
+      message: 'Package manager:',
       options: [
-        { label: "npm", value: "npm" },
-        { label: "pnpm", value: "pnpm" },
-        { label: "yarn", value: "yarn" },
-        { label: "bun", value: "bun" },
+        { label: 'npm', value: 'npm' },
+        { label: 'pnpm', value: 'pnpm' },
+        { label: 'yarn', value: 'yarn' },
+        { label: 'bun', value: 'bun' },
       ],
     });
 
-    if (typeof response === "symbol") {
+    if (typeof response === 'symbol') {
       cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
       return null;
     }
@@ -121,20 +119,18 @@ export async function promptPackageManager(
   }
 }
 
-export async function promptGit(
-  options: { yes?: boolean } = {},
-): Promise<boolean> {
+export async function promptGit(options: { yes?: boolean } = {}): Promise<boolean> {
   if (options.yes) {
     return false;
   }
 
   try {
     const response = await confirm({
-      message: "Initialize Git repository?",
+      message: 'Initialize Git repository?',
       initialValue: false,
     });
 
-    if (typeof response === "symbol") {
+    if (typeof response === 'symbol') {
       cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
       return false;
     }

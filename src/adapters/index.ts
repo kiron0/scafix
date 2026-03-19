@@ -1,8 +1,8 @@
-import { viteReactAdapter } from "./vite.adapter.js";
-import { nextAdapter } from "./next.adapter.js";
-import { expressAdapter } from "./express.adapter.js";
-import { npmPackageAdapter } from "./npm.adapter.js";
-import type { StackAdapter } from "../types/stack.js";
+import { viteReactAdapter } from './vite.adapter.js';
+import { nextAdapter } from './next.adapter.js';
+import { expressAdapter } from './express.adapter.js';
+import { npmPackageAdapter } from './npm.adapter.js';
+import type { StackAdapter } from '../types/stack.js';
 
 export const adapters: StackAdapter[] = [
   viteReactAdapter,

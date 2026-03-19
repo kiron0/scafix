@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CliExitError } from "../../src/utils/cli-error.js";
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { CliExitError } from '../../src/utils/cli-error.js';
 
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
@@ -23,156 +23,172 @@ const mocks = vi.hoisted(() => ({
   validateProjectName: vi.fn(),
 }));
 
-vi.mock("@clack/prompts", () => ({
+vi.mock('@clack/prompts', () => ({
   spinner: () => ({
     start: vi.fn(),
     stop: vi.fn(),
   }),
 }));
 
-vi.mock("../../src/adapters/index.js", () => ({
+vi.mock('../../src/adapters/index.js', () => ({
   getAdapterById: mocks.getAdapterById,
 }));
 
-vi.mock("../../src/prompts/select-stack.js", () => ({
+vi.mock('../../src/prompts/select-stack.js', () => ({
   promptDirectory: mocks.promptDirectory,
   promptGit: mocks.promptGit,
   promptPackageManager: mocks.promptPackageManager,
   promptProjectName: mocks.promptProjectName,
 }));
 
-vi.mock("../../src/utils/exec.js", () => ({
+vi.mock('../../src/utils/exec.js', () => ({
   exec: mocks.exec,
 }));
 
-vi.mock("../../src/utils/logger.js", () => ({
+vi.mock('../../src/utils/logger.js', () => ({
   logger: mocks.logger,
 }));
 
-vi.mock("../../src/utils/package-manager.js", async () => {
-  const actual = await vi.importActual("../../src/utils/package-manager.js");
+vi.mock('../../src/utils/package-manager.js', async () => {
+  const actual = await vi.importActual('../../src/utils/package-manager.js');
   return {
     ...actual,
     detectPackageManagerFromCwd: mocks.detectPackageManagerFromCwd,
   };
 });
 
-vi.mock("../../src/utils/validate.js", () => ({
+vi.mock('../../src/utils/validate.js', () => ({
   getDefaultDirectoryName: mocks.getDefaultDirectoryName,
   validateDirectory: mocks.validateDirectory,
   validateNpmPackageName: mocks.validateNpmPackageName,
   validateProjectName: mocks.validateProjectName,
 }));
 
-import { createCommand } from "../../src/commands/create.js";
+import { createCommand } from '../../src/commands/create.js';
 
-describe("createCommand", () => {
+describe('createCommand', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getAdapterById.mockReturnValue({
-      id: "vite",
-      name: "Vite",
-      description: "test adapter",
+      id: 'vite',
+      name: 'Vite',
+      description: 'test adapter',
       create: mocks.create,
     });
     mocks.promptGit.mockResolvedValue(false);
-    mocks.promptPackageManager.mockResolvedValue("npm");
-    mocks.promptProjectName.mockResolvedValue("demo-app");
+    mocks.promptPackageManager.mockResolvedValue('npm');
+    mocks.promptProjectName.mockResolvedValue('demo-app');
     mocks.getDefaultDirectoryName.mockImplementation((name: string) => name);
     mocks.validateDirectory.mockReturnValue({
       exists: false,
-      path: "/tmp/demo-app",
+      path: '/tmp/demo-app',
       valid: true,
     });
     mocks.validateNpmPackageName.mockReturnValue(true);
     mocks.validateProjectName.mockReturnValue(true);
   });
 
-  it("respects an explicit directory without prompting again", async () => {
-    await createCommand("vite", {
-      directory: "custom-dir",
-      name: "demo-app",
+  it('respects an explicit directory without prompting again', async () => {
+    await createCommand('vite', {
+      directory: 'custom-dir',
+      name: 'demo-app',
     });
 
     expect(mocks.promptDirectory).not.toHaveBeenCalled();
     expect(mocks.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        directory: "custom-dir",
-        projectName: "demo-app",
-      }),
+        directory: 'custom-dir',
+        projectName: 'demo-app',
+      })
     );
   });
 
-  it("does not let a blank directory override the derived project directory", async () => {
-    await createCommand("vite", {
-      directory: "   ",
-      name: "demo-app",
+  it('does not let a blank directory override the derived project directory', async () => {
+    await createCommand('vite', {
+      directory: '   ',
+      name: 'demo-app',
       yes: true,
     });
 
     expect(mocks.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        directory: "demo-app",
-        projectName: "demo-app",
-      }),
+        directory: 'demo-app',
+        projectName: 'demo-app',
+      })
     );
   });
 
-  it("uses detected package manager without prompting when available", async () => {
-    mocks.detectPackageManagerFromCwd.mockReturnValue("pnpm");
+  it('uses detected package manager without prompting when available', async () => {
+    mocks.detectPackageManagerFromCwd.mockReturnValue('pnpm');
 
-    await createCommand("vite", {
-      name: "demo-app",
+    await createCommand('vite', {
+      name: 'demo-app',
     });
 
     expect(mocks.promptPackageManager).not.toHaveBeenCalled();
     expect(mocks.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        packageManager: "pnpm",
-      }),
+        packageManager: 'pnpm',
+      })
     );
   });
 
-  it("rejects unsupported package managers before adapter execution", async () => {
+  it('rejects unsupported package managers before adapter execution', async () => {
     await expect(
-      createCommand("vite", {
-        name: "demo-app",
-        packageManager: "pip",
+      createCommand('vite', {
+        name: 'demo-app',
+        packageManager: 'pip',
         yes: true,
-      }),
+      })
+    ).rejects.toBeInstanceOf(CliExitError);
+
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.logger.error).toHaveBeenCalledWith('Unsupported package manager: pip');
+  });
+
+  it('rejects invalid explicit directories before adapter execution', async () => {
+    mocks.validateDirectory.mockReturnValue({
+      exists: false,
+      path: '/tmp/CON.txt',
+      reason: 'Directory path segment is a reserved Windows name',
+      valid: false,
+    });
+
+    await expect(
+      createCommand('vite', {
+        directory: 'CON.txt',
+        name: 'demo-app',
+        yes: true,
+      })
     ).rejects.toBeInstanceOf(CliExitError);
 
     expect(mocks.create).not.toHaveBeenCalled();
     expect(mocks.logger.error).toHaveBeenCalledWith(
-      "Unsupported package manager: pip",
+      'Directory path segment is a reserved Windows name'
     );
   });
 
-  it("uses npm package validation and derives a safe directory for scoped packages", async () => {
+  it('uses npm package validation and derives a safe directory for scoped packages', async () => {
     mocks.getAdapterById.mockReturnValue({
-      id: "npm",
-      name: "NPM Package",
-      description: "test adapter",
+      id: 'npm',
+      name: 'NPM Package',
+      description: 'test adapter',
       create: mocks.create,
     });
-    mocks.getDefaultDirectoryName.mockReturnValue("demo-pkg");
+    mocks.getDefaultDirectoryName.mockReturnValue('demo-pkg');
 
-    await createCommand("npm", {
-      name: "@scope/demo-pkg",
+    await createCommand('npm', {
+      name: '@scope/demo-pkg',
       yes: true,
     });
 
-    expect(mocks.validateNpmPackageName).toHaveBeenCalledWith(
-      "@scope/demo-pkg",
-    );
-    expect(mocks.validateProjectName).not.toHaveBeenCalledWith(
-      "@scope/demo-pkg",
-    );
+    expect(mocks.validateNpmPackageName).toHaveBeenCalledWith('@scope/demo-pkg');
+    expect(mocks.validateProjectName).not.toHaveBeenCalledWith('@scope/demo-pkg');
     expect(mocks.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        directory: "demo-pkg",
-        projectName: "@scope/demo-pkg",
-      }),
+        directory: 'demo-pkg',
+        projectName: '@scope/demo-pkg',
+      })
     );
   });
 });

@@ -1,7 +1,7 @@
 export interface CreateOptions {
   projectName: string;
   directory?: string;
-  packageManager?: "npm" | "pnpm" | "yarn" | "bun";
+  packageManager?: 'npm' | 'pnpm' | 'yarn' | 'bun';
   typescript?: boolean;
   eslint?: boolean;
   prettier?: boolean;

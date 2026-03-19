@@ -1,39 +1,38 @@
-import { access, mkdtemp, readFile, rm } from "fs/promises";
-import { tmpdir } from "os";
-import { join } from "path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { npmPackageAdapter } from "../../src/adapters/npm.adapter.js";
-import { detectPackageManager } from "../../src/utils/package-manager.js";
+import { access, mkdtemp, readFile, rm } from 'fs/promises';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { npmPackageAdapter } from '../../src/adapters/npm.adapter.js';
+import { detectPackageManager } from '../../src/utils/package-manager.js';
 
-const describeIf =
-  process.env.SCAFIX_RUN_NETWORK_SMOKE === "1" ? describe : describe.skip;
+const describeIf = process.env.SCAFIX_RUN_NETWORK_SMOKE === '1' ? describe : describe.skip;
 
 const packageManagers = [
   {
-    expectedLockfiles: ["package-lock.json"],
-    value: "npm",
+    expectedLockfiles: ['package-lock.json'],
+    value: 'npm',
   },
   {
-    expectedLockfiles: ["pnpm-lock.yaml"],
-    value: "pnpm",
+    expectedLockfiles: ['pnpm-lock.yaml'],
+    value: 'pnpm',
   },
   {
-    expectedLockfiles: ["yarn.lock"],
-    value: "yarn",
+    expectedLockfiles: ['yarn.lock'],
+    value: 'yarn',
   },
   {
-    expectedLockfiles: ["bun.lock", "bun.lockb"],
-    value: "bun",
+    expectedLockfiles: ['bun.lock', 'bun.lockb'],
+    value: 'bun',
   },
 ] as const;
 
-describeIf.sequential("package manager install smoke", () => {
+describeIf.sequential('package manager install smoke', () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await mkdtemp(join(tmpdir(), "scafix-pm-smoke-"));
-    cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tempDir);
+    tempDir = await mkdtemp(join(tmpdir(), 'scafix-pm-smoke-'));
+    cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(tempDir);
   });
 
   afterEach(async () => {
@@ -42,7 +41,7 @@ describeIf.sequential("package manager install smoke", () => {
   });
 
   it.each(packageManagers)(
-    "creates a real npm package scaffold with %s lockfile behavior",
+    'creates a real npm package scaffold with %s lockfile behavior',
     async ({ expectedLockfiles, value }) => {
       const projectName = `smoke-pkg-${value}`;
       await npmPackageAdapter.create({
@@ -52,13 +51,9 @@ describeIf.sequential("package manager install smoke", () => {
       });
 
       const projectPath = join(tempDir, projectName);
-      await expect(
-        access(join(projectPath, "package.json")),
-      ).resolves.toBeUndefined();
+      await expect(access(join(projectPath, 'package.json'))).resolves.toBeUndefined();
 
-      const packageJson = JSON.parse(
-        await readFile(join(projectPath, "package.json"), "utf8"),
-      );
+      const packageJson = JSON.parse(await readFile(join(projectPath, 'package.json'), 'utf8'));
       expect(packageJson.name).toBe(projectName);
       expect(detectPackageManager(projectPath)).toBe(value);
 
@@ -75,6 +70,6 @@ describeIf.sequential("package manager install smoke", () => {
 
       expect(foundLockfile).toBe(true);
     },
-    300000,
+    300000
   );
 });

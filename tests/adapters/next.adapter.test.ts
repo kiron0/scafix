@@ -1,7 +1,7 @@
-import { access, mkdir, mkdtemp, rm, writeFile } from "fs/promises";
-import { tmpdir } from "os";
-import { join } from "path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { access, mkdir, mkdtemp, rm, writeFile } from 'fs/promises';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   exec: vi.fn(),
@@ -15,42 +15,42 @@ const mocks = vi.hoisted(() => ({
   promptNextCustomizations: vi.fn(),
 }));
 
-vi.mock("@clack/prompts", () => ({
+vi.mock('@clack/prompts', () => ({
   spinner: () => ({
     start: vi.fn(),
     stop: vi.fn(),
   }),
 }));
 
-vi.mock("../../src/prompts/customizations.js", () => ({
+vi.mock('../../src/prompts/customizations.js', () => ({
   promptNextCustomizations: mocks.promptNextCustomizations,
 }));
 
-vi.mock("../../src/utils/exec.js", () => ({
+vi.mock('../../src/utils/exec.js', () => ({
   exec: mocks.exec,
 }));
 
-vi.mock("../../src/utils/logger.js", () => ({
+vi.mock('../../src/utils/logger.js', () => ({
   logger: mocks.logger,
 }));
 
-import { nextAdapter } from "../../src/adapters/next.adapter.js";
+import { nextAdapter } from '../../src/adapters/next.adapter.js';
 
-describe.sequential("nextAdapter", () => {
+describe.sequential('nextAdapter', () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;
   let tempDir: string;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    tempDir = await mkdtemp(join(tmpdir(), "scafix-next-adapter-"));
-    cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tempDir);
+    tempDir = await mkdtemp(join(tmpdir(), 'scafix-next-adapter-'));
+    cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(tempDir);
     mocks.exec.mockImplementation(async (_command, args, options) => {
       const projectName =
-        args[0] === "create-next-app@latest"
+        args[0] === 'create-next-app@latest'
           ? (args[1] as string)
-          : args[0] === "create" && args[1] === "next-app"
+          : args[0] === 'create' && args[1] === 'next-app'
             ? (args[2] as string)
-            : args[1] === "create-next-app@latest"
+            : args[1] === 'create-next-app@latest'
               ? (args[2] as string)
               : undefined;
       if (!projectName || options?.cwd !== tempDir) {
@@ -59,7 +59,7 @@ describe.sequential("nextAdapter", () => {
 
       const projectPath = join(tempDir, projectName);
       await mkdir(projectPath, { recursive: true });
-      await writeFile(join(projectPath, "package.json"), "{}\n");
+      await writeFile(join(projectPath, 'package.json'), '{}\n');
     });
   });
 
@@ -68,7 +68,7 @@ describe.sequential("nextAdapter", () => {
     await rm(tempDir, { force: true, recursive: true });
   });
 
-  it("uses shared customizations to build create-next-app flags", async () => {
+  it('uses shared customizations to build create-next-app flags', async () => {
     mocks.promptNextCustomizations.mockResolvedValue({
       appRouter: false,
       eslint: false,
@@ -80,8 +80,8 @@ describe.sequential("nextAdapter", () => {
     });
 
     await nextAdapter.create({
-      packageManager: "pnpm",
-      projectName: "demo-next",
+      packageManager: 'pnpm',
+      projectName: 'demo-next',
       yes: true,
     });
 
@@ -89,101 +89,101 @@ describe.sequential("nextAdapter", () => {
       yes: true,
     });
     expect(mocks.exec).toHaveBeenCalledWith(
-      "pnpm",
+      'pnpm',
       [
-        "dlx",
-        "create-next-app@latest",
-        "demo-next",
-        "--js",
-        "--no-eslint",
-        "--no-app",
-        "--no-src-dir",
-        "--no-tailwind",
-        "--import-alias",
-        "@/*",
-        "--use-pnpm",
-        "--yes",
+        'dlx',
+        'create-next-app@latest',
+        'demo-next',
+        '--js',
+        '--no-eslint',
+        '--no-app',
+        '--no-src-dir',
+        '--no-tailwind',
+        '--import-alias',
+        '@/*',
+        '--use-pnpm',
+        '--yes',
       ],
       expect.objectContaining({
         cwd: tempDir,
-        stdio: "inherit",
-      }),
+        stdio: 'inherit',
+      })
     );
   });
 
   it.each([
     {
       args: [
-        "create-next-app@latest",
-        "demo-next-npm",
-        "--ts",
-        "--eslint",
-        "--app",
-        "--src-dir",
-        "--tailwind",
-        "--import-alias",
-        "@/*",
-        "--use-npm",
-        "--yes",
+        'create-next-app@latest',
+        'demo-next-npm',
+        '--ts',
+        '--eslint',
+        '--app',
+        '--src-dir',
+        '--tailwind',
+        '--import-alias',
+        '@/*',
+        '--use-npm',
+        '--yes',
       ],
-      cmd: "npx",
-      packageManager: "npm",
+      cmd: 'npx',
+      packageManager: 'npm',
     },
     {
       args: [
-        "dlx",
-        "create-next-app@latest",
-        "demo-next-pnpm",
-        "--ts",
-        "--eslint",
-        "--app",
-        "--src-dir",
-        "--tailwind",
-        "--import-alias",
-        "@/*",
-        "--use-pnpm",
-        "--yes",
+        'dlx',
+        'create-next-app@latest',
+        'demo-next-pnpm',
+        '--ts',
+        '--eslint',
+        '--app',
+        '--src-dir',
+        '--tailwind',
+        '--import-alias',
+        '@/*',
+        '--use-pnpm',
+        '--yes',
       ],
-      cmd: "pnpm",
-      packageManager: "pnpm",
+      cmd: 'pnpm',
+      packageManager: 'pnpm',
     },
     {
       args: [
-        "create",
-        "next-app",
-        "demo-next-yarn",
-        "--ts",
-        "--eslint",
-        "--app",
-        "--src-dir",
-        "--tailwind",
-        "--import-alias",
-        "@/*",
-        "--use-yarn",
-        "--yes",
+        'create',
+        'next-app',
+        'demo-next-yarn',
+        '--ts',
+        '--eslint',
+        '--app',
+        '--src-dir',
+        '--tailwind',
+        '--import-alias',
+        '@/*',
+        '--use-yarn',
+        '--yes',
       ],
-      cmd: "yarn",
-      packageManager: "yarn",
+      cmd: 'yarn',
+      packageManager: 'yarn',
     },
     {
       args: [
-        "create-next-app@latest",
-        "demo-next-bun",
-        "--ts",
-        "--eslint",
-        "--app",
-        "--src-dir",
-        "--tailwind",
-        "--import-alias",
-        "@/*",
-        "--use-bun",
-        "--yes",
+        'create-next-app@latest',
+        'demo-next-bun',
+        '--ts',
+        '--eslint',
+        '--app',
+        '--src-dir',
+        '--tailwind',
+        '--import-alias',
+        '@/*',
+        '--use-bun',
+        '--yes',
       ],
-      cmd: "bunx",
-      packageManager: "bun",
+      cmd: 'bunx',
+      packageManager: 'bun',
     },
   ])(
-    "covers the Next.js external CLI command mapping for $packageManager",
+    'covers the Next.js external CLI command mapping for $packageManager',
     async ({ args, cmd, packageManager }) => {
       mocks.promptNextCustomizations.mockResolvedValue({
         appRouter: true,
@@ -207,13 +207,13 @@ describe.sequential("nextAdapter", () => {
         args,
         expect.objectContaining({
           cwd: tempDir,
-          stdio: "inherit",
-        }),
+          stdio: 'inherit',
+        })
       );
-    },
+    }
   );
 
-  it("adds prettier and shadcn when requested", async () => {
+  it('adds prettier and shadcn when requested', async () => {
     mocks.promptNextCustomizations.mockResolvedValue({
       appRouter: true,
       eslint: true,
@@ -225,55 +225,53 @@ describe.sequential("nextAdapter", () => {
     });
 
     await nextAdapter.create({
-      directory: "demo-next-prettier",
-      packageManager: "bun",
-      projectName: "demo-next-prettier",
+      directory: 'demo-next-prettier',
+      packageManager: 'bun',
+      projectName: 'demo-next-prettier',
     });
 
-    const projectPath = join(tempDir, "demo-next-prettier");
+    const projectPath = join(tempDir, 'demo-next-prettier');
 
     expect(mocks.exec).toHaveBeenCalledWith(
-      "bunx",
+      'bunx',
       [
-        "create-next-app@latest",
-        "demo-next-prettier",
-        "--ts",
-        "--eslint",
-        "--app",
-        "--src-dir",
-        "--tailwind",
-        "--import-alias",
-        "@/*",
-        "--use-bun",
-        "--yes",
+        'create-next-app@latest',
+        'demo-next-prettier',
+        '--ts',
+        '--eslint',
+        '--app',
+        '--src-dir',
+        '--tailwind',
+        '--import-alias',
+        '@/*',
+        '--use-bun',
+        '--yes',
       ],
       expect.objectContaining({
         cwd: tempDir,
-        stdio: "inherit",
-      }),
+        stdio: 'inherit',
+      })
     );
     expect(mocks.exec).toHaveBeenCalledWith(
-      "bun",
-      ["add", "-D", "prettier"],
+      'bun',
+      ['add', '-D', 'prettier'],
       expect.objectContaining({
         cwd: projectPath,
-        stdio: "pipe",
-      }),
+        stdio: 'pipe',
+      })
     );
     expect(mocks.exec).toHaveBeenCalledWith(
-      "bunx",
-      ["shadcn@latest", "init"],
+      'bunx',
+      ['shadcn@latest', 'init'],
       expect.objectContaining({
         cwd: projectPath,
-        stdio: "inherit",
-      }),
+        stdio: 'inherit',
+      })
     );
-    await expect(
-      access(join(projectPath, ".prettierrc")),
-    ).resolves.toBeUndefined();
+    await expect(access(join(projectPath, '.prettierrc'))).resolves.toBeUndefined();
   });
 
-  it("uses yarn classic commands for Next.js scaffolding and follow-up tooling", async () => {
+  it('uses yarn classic commands for Next.js scaffolding and follow-up tooling', async () => {
     mocks.promptNextCustomizations.mockResolvedValue({
       appRouter: true,
       eslint: true,
@@ -285,41 +283,41 @@ describe.sequential("nextAdapter", () => {
     });
 
     await nextAdapter.create({
-      directory: "demo-next-yarn",
-      packageManager: "yarn",
-      projectName: "demo-next-yarn",
+      directory: 'demo-next-yarn',
+      packageManager: 'yarn',
+      projectName: 'demo-next-yarn',
     });
 
-    const projectPath = join(tempDir, "demo-next-yarn");
+    const projectPath = join(tempDir, 'demo-next-yarn');
 
     expect(mocks.exec).toHaveBeenCalledWith(
-      "yarn",
+      'yarn',
       [
-        "create",
-        "next-app",
-        "demo-next-yarn",
-        "--ts",
-        "--eslint",
-        "--app",
-        "--src-dir",
-        "--tailwind",
-        "--import-alias",
-        "@/*",
-        "--use-yarn",
-        "--yes",
+        'create',
+        'next-app',
+        'demo-next-yarn',
+        '--ts',
+        '--eslint',
+        '--app',
+        '--src-dir',
+        '--tailwind',
+        '--import-alias',
+        '@/*',
+        '--use-yarn',
+        '--yes',
       ],
       expect.objectContaining({
         cwd: tempDir,
-        stdio: "inherit",
-      }),
+        stdio: 'inherit',
+      })
     );
     expect(mocks.exec).toHaveBeenCalledWith(
-      "npx",
-      ["shadcn@latest", "init"],
+      'npx',
+      ['shadcn@latest', 'init'],
       expect.objectContaining({
         cwd: projectPath,
-        stdio: "inherit",
-      }),
+        stdio: 'inherit',
+      })
     );
   });
 });

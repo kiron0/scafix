@@ -1,10 +1,10 @@
-import { select, confirm } from "@clack/prompts";
-import { logger } from "../utils/logger.js";
+import { select, confirm } from '@clack/prompts';
+import { logger } from '../utils/logger.js';
 
 export interface ViteReactCustomizations {
   typescript: boolean;
   tailwind: boolean;
-  tailwindVersion?: "v3" | "v4";
+  tailwindVersion?: 'v3' | 'v4';
   shadcn: boolean;
   prettier: boolean;
 }
@@ -21,7 +21,7 @@ export interface NextCustomizations {
 
 export interface ExpressCustomizations {
   typescript: boolean;
-  pattern: "mvc" | "rest" | "layered" | "simple";
+  pattern: 'mvc' | 'rest' | 'layered' | 'simple';
   eslint: boolean;
   prettier: boolean;
   cors: boolean;
@@ -31,14 +31,14 @@ export interface ExpressCustomizations {
 
 export interface NpmPackageCustomizations {
   typescript: boolean;
-  buildTool: "tsup" | "rollup" | "esbuild" | "none";
+  buildTool: 'tsup' | 'rollup' | 'esbuild' | 'none';
   eslint: boolean;
   prettier: boolean;
-  testFramework: "vitest" | "jest" | "none";
+  testFramework: 'vitest' | 'jest' | 'none';
 }
 
 export async function promptViteReactCustomizations(
-  options: { yes?: boolean } = {},
+  options: { yes?: boolean } = {}
 ): Promise<ViteReactCustomizations> {
   if (options.yes) {
     return {
@@ -59,60 +59,60 @@ export async function promptViteReactCustomizations(
 
     // TypeScript or JavaScript
     const tsResponse = await select({
-      message: "Use TypeScript?",
+      message: 'Use TypeScript?',
       options: [
-        { label: "Yes", value: true },
-        { label: "No (JavaScript)", value: false },
+        { label: 'Yes', value: true },
+        { label: 'No (JavaScript)', value: false },
       ],
     });
-    if (typeof tsResponse === "symbol") {
-      throw new Error("Prompt cancelled");
+    if (typeof tsResponse === 'symbol') {
+      throw new Error('Prompt cancelled');
     }
     customizations.typescript = tsResponse ?? true;
 
     // Tailwind CSS
     const tailwindResponse = await confirm({
-      message: "Add Tailwind CSS?",
+      message: 'Add Tailwind CSS?',
       initialValue: false,
     });
-    if (typeof tailwindResponse === "symbol") {
-      throw new Error("Prompt cancelled");
+    if (typeof tailwindResponse === 'symbol') {
+      throw new Error('Prompt cancelled');
     }
     customizations.tailwind = tailwindResponse ?? false;
 
     if (customizations.tailwind) {
       const tailwindVersionResponse = await select({
-        message: "Tailwind CSS version:",
+        message: 'Tailwind CSS version:',
         options: [
-          { label: "v4 (Latest)", value: "v4" },
-          { label: "v3 (Stable)", value: "v3" },
+          { label: 'v4 (Latest)', value: 'v4' },
+          { label: 'v3 (Stable)', value: 'v3' },
         ],
       });
-      if (typeof tailwindVersionResponse === "symbol") {
-        throw new Error("Prompt cancelled");
+      if (typeof tailwindVersionResponse === 'symbol') {
+        throw new Error('Prompt cancelled');
       }
-      customizations.tailwindVersion = tailwindVersionResponse ?? "v4";
+      customizations.tailwindVersion = tailwindVersionResponse ?? 'v4';
     }
 
     // Shadcn UI
     if (customizations.tailwind) {
       const shadcnResponse = await confirm({
-        message: "Add shadcn/ui?",
+        message: 'Add shadcn/ui?',
         initialValue: false,
       });
-      if (typeof shadcnResponse === "symbol") {
-        throw new Error("Prompt cancelled");
+      if (typeof shadcnResponse === 'symbol') {
+        throw new Error('Prompt cancelled');
       }
       customizations.shadcn = shadcnResponse ?? false;
     }
 
     // Prettier
     const prettierResponse = await confirm({
-      message: "Add Prettier?",
+      message: 'Add Prettier?',
       initialValue: false,
     });
-    if (typeof prettierResponse === "symbol") {
-      throw new Error("Prompt cancelled");
+    if (typeof prettierResponse === 'symbol') {
+      throw new Error('Prompt cancelled');
     }
     customizations.prettier = prettierResponse ?? false;
 
@@ -129,7 +129,7 @@ export async function promptViteReactCustomizations(
 }
 
 export async function promptNextCustomizations(
-  options: { yes?: boolean } = {},
+  options: { yes?: boolean } = {}
 ): Promise<NextCustomizations> {
   if (options.yes) {
     return {
@@ -156,76 +156,76 @@ export async function promptNextCustomizations(
 
     // TypeScript
     const tsResponse = await select({
-      message: "Use TypeScript?",
+      message: 'Use TypeScript?',
       options: [
-        { label: "Yes", value: true },
-        { label: "No (JavaScript)", value: false },
+        { label: 'Yes', value: true },
+        { label: 'No (JavaScript)', value: false },
       ],
     });
-    if (typeof tsResponse === "symbol") {
-      throw new Error("Prompt cancelled");
+    if (typeof tsResponse === 'symbol') {
+      throw new Error('Prompt cancelled');
     }
     customizations.typescript = tsResponse ?? true;
 
     // Tailwind CSS
     const tailwindResponse = await confirm({
-      message: "Add Tailwind CSS?",
+      message: 'Add Tailwind CSS?',
       initialValue: true,
     });
-    if (typeof tailwindResponse === "symbol") {
-      throw new Error("Prompt cancelled");
+    if (typeof tailwindResponse === 'symbol') {
+      throw new Error('Prompt cancelled');
     }
     customizations.tailwind = tailwindResponse ?? true;
 
     // Shadcn UI
     if (customizations.tailwind) {
       const shadcnResponse = await confirm({
-        message: "Add shadcn/ui?",
+        message: 'Add shadcn/ui?',
         initialValue: false,
       });
-      if (typeof shadcnResponse === "symbol") {
-        throw new Error("Prompt cancelled");
+      if (typeof shadcnResponse === 'symbol') {
+        throw new Error('Prompt cancelled');
       }
       customizations.shadcn = shadcnResponse ?? false;
     }
 
     // ESLint
     const eslintResponse = await confirm({
-      message: "Add ESLint?",
+      message: 'Add ESLint?',
       initialValue: true,
     });
-    if (typeof eslintResponse === "symbol") {
-      throw new Error("Prompt cancelled");
+    if (typeof eslintResponse === 'symbol') {
+      throw new Error('Prompt cancelled');
     }
     customizations.eslint = eslintResponse ?? true;
 
     // Prettier
     const prettierResponse = await confirm({
-      message: "Add Prettier?",
+      message: 'Add Prettier?',
       initialValue: false,
     });
-    if (typeof prettierResponse === "symbol") {
-      throw new Error("Prompt cancelled");
+    if (typeof prettierResponse === 'symbol') {
+      throw new Error('Prompt cancelled');
     }
     customizations.prettier = prettierResponse ?? false;
 
     // App Router
     const appRouterResponse = await confirm({
-      message: "Use App Router?",
+      message: 'Use App Router?',
       initialValue: true,
     });
-    if (typeof appRouterResponse === "symbol") {
-      throw new Error("Prompt cancelled");
+    if (typeof appRouterResponse === 'symbol') {
+      throw new Error('Prompt cancelled');
     }
     customizations.appRouter = appRouterResponse ?? true;
 
     // src directory
     const srcDirResponse = await confirm({
-      message: "Use src/ directory?",
+      message: 'Use src/ directory?',
       initialValue: true,
     });
-    if (typeof srcDirResponse === "symbol") {
-      throw new Error("Prompt cancelled");
+    if (typeof srcDirResponse === 'symbol') {
+      throw new Error('Prompt cancelled');
     }
     customizations.srcDir = srcDirResponse ?? true;
 
@@ -245,12 +245,12 @@ export async function promptNextCustomizations(
 }
 
 export async function promptExpressCustomizations(
-  options: { yes?: boolean } = {},
+  options: { yes?: boolean } = {}
 ): Promise<ExpressCustomizations> {
   if (options.yes) {
     return {
       typescript: true,
-      pattern: "mvc",
+      pattern: 'mvc',
       eslint: true,
       prettier: false,
       cors: false,
@@ -262,7 +262,7 @@ export async function promptExpressCustomizations(
   try {
     const customizations: ExpressCustomizations = {
       typescript: true,
-      pattern: "mvc",
+      pattern: 'mvc',
       eslint: true,
       prettier: false,
       cors: false,
@@ -272,95 +272,95 @@ export async function promptExpressCustomizations(
 
     // TypeScript
     const tsResponse = await select({
-      message: "Use TypeScript?",
+      message: 'Use TypeScript?',
       options: [
-        { label: "Yes", value: true },
-        { label: "No (JavaScript)", value: false },
+        { label: 'Yes', value: true },
+        { label: 'No (JavaScript)', value: false },
       ],
     });
-    if (typeof tsResponse === "symbol") {
-      throw new Error("Prompt cancelled");
+    if (typeof tsResponse === 'symbol') {
+      throw new Error('Prompt cancelled');
     }
     customizations.typescript = tsResponse ?? true;
 
     // Architecture Pattern
     const patternResponse = await select({
-      message: "Select architecture pattern:",
+      message: 'Select architecture pattern:',
       options: [
         {
-          label: "MVC (Model-View-Controller)",
-          hint: "Separates concerns into models, views, and controllers",
-          value: "mvc",
+          label: 'MVC (Model-View-Controller)',
+          hint: 'Separates concerns into models, views, and controllers',
+          value: 'mvc',
         },
         {
-          label: "REST API",
-          hint: "RESTful API with routes, controllers, and services",
-          value: "rest",
+          label: 'REST API',
+          hint: 'RESTful API with routes, controllers, and services',
+          value: 'rest',
         },
         {
-          label: "Layered Architecture",
-          hint: "Presentation, Business, and Data layers",
-          value: "layered",
+          label: 'Layered Architecture',
+          hint: 'Presentation, Business, and Data layers',
+          value: 'layered',
         },
         {
-          label: "Simple",
-          hint: "Minimal structure with routes and middleware",
-          value: "simple",
+          label: 'Simple',
+          hint: 'Minimal structure with routes and middleware',
+          value: 'simple',
         },
       ],
     });
-    if (typeof patternResponse === "symbol") {
-      throw new Error("Prompt cancelled");
+    if (typeof patternResponse === 'symbol') {
+      throw new Error('Prompt cancelled');
     }
-    customizations.pattern = patternResponse ?? "mvc";
+    customizations.pattern = patternResponse ?? 'mvc';
 
     // ESLint
     const eslintResponse = await confirm({
-      message: "Add ESLint?",
+      message: 'Add ESLint?',
       initialValue: true,
     });
-    if (typeof eslintResponse === "symbol") {
-      throw new Error("Prompt cancelled");
+    if (typeof eslintResponse === 'symbol') {
+      throw new Error('Prompt cancelled');
     }
     customizations.eslint = eslintResponse ?? true;
 
     // Prettier
     const prettierResponse = await confirm({
-      message: "Add Prettier?",
+      message: 'Add Prettier?',
       initialValue: false,
     });
-    if (typeof prettierResponse === "symbol") {
-      throw new Error("Prompt cancelled");
+    if (typeof prettierResponse === 'symbol') {
+      throw new Error('Prompt cancelled');
     }
     customizations.prettier = prettierResponse ?? false;
 
     // CORS
     const corsResponse = await confirm({
-      message: "Add CORS support?",
+      message: 'Add CORS support?',
       initialValue: false,
     });
-    if (typeof corsResponse === "symbol") {
-      throw new Error("Prompt cancelled");
+    if (typeof corsResponse === 'symbol') {
+      throw new Error('Prompt cancelled');
     }
     customizations.cors = corsResponse ?? false;
 
     // Helmet
     const helmetResponse = await confirm({
-      message: "Add Helmet (security headers)?",
+      message: 'Add Helmet (security headers)?',
       initialValue: false,
     });
-    if (typeof helmetResponse === "symbol") {
-      throw new Error("Prompt cancelled");
+    if (typeof helmetResponse === 'symbol') {
+      throw new Error('Prompt cancelled');
     }
     customizations.helmet = helmetResponse ?? false;
 
     // dotenv
     const dotenvResponse = await confirm({
-      message: "Add dotenv for environment variables?",
+      message: 'Add dotenv for environment variables?',
       initialValue: true,
     });
-    if (typeof dotenvResponse === "symbol") {
-      throw new Error("Prompt cancelled");
+    if (typeof dotenvResponse === 'symbol') {
+      throw new Error('Prompt cancelled');
     }
     customizations.dotenv = dotenvResponse ?? true;
 
@@ -369,7 +369,7 @@ export async function promptExpressCustomizations(
     logger.debug(`Prompt cancelled: ${error}`);
     return {
       typescript: true,
-      pattern: "mvc",
+      pattern: 'mvc',
       eslint: true,
       prettier: false,
       cors: false,
@@ -380,126 +380,125 @@ export async function promptExpressCustomizations(
 }
 
 export async function promptNpmPackageCustomizations(
-  options: { yes?: boolean } = {},
+  options: { yes?: boolean } = {}
 ): Promise<NpmPackageCustomizations> {
   if (options.yes) {
     return {
       typescript: true,
-      buildTool: "tsup",
+      buildTool: 'tsup',
       eslint: true,
       prettier: false,
-      testFramework: "none",
+      testFramework: 'none',
     };
   }
 
   try {
     const customizations: NpmPackageCustomizations = {
       typescript: true,
-      buildTool: "tsup",
+      buildTool: 'tsup',
       eslint: true,
       prettier: false,
-      testFramework: "none",
+      testFramework: 'none',
     };
 
     // TypeScript
     const tsResponse = await select({
-      message: "Use TypeScript?",
+      message: 'Use TypeScript?',
       options: [
-        { label: "Yes", value: true },
-        { label: "No (JavaScript)", value: false },
+        { label: 'Yes', value: true },
+        { label: 'No (JavaScript)', value: false },
       ],
     });
-    if (typeof tsResponse === "symbol") {
-      throw new Error("Prompt cancelled");
+    if (typeof tsResponse === 'symbol') {
+      throw new Error('Prompt cancelled');
     }
     customizations.typescript = tsResponse ?? true;
 
     // Build tool (only ask if TypeScript is selected)
     if (customizations.typescript) {
       const buildToolResponse = await select({
-        message: "Select build tool:",
+        message: 'Select build tool:',
         options: [
           {
-            label: "tsup",
-            hint: "Fast, zero-config bundler (Recommended)",
-            value: "tsup",
+            label: 'tsup',
+            hint: 'Fast, zero-config bundler (Recommended)',
+            value: 'tsup',
           },
           {
-            label: "Rollup",
-            hint: "Module bundler with tree-shaking",
-            value: "rollup",
+            label: 'Rollup',
+            hint: 'Module bundler with tree-shaking',
+            value: 'rollup',
           },
           {
-            label: "esbuild",
-            hint: "Extremely fast JavaScript bundler",
-            value: "esbuild",
+            label: 'esbuild',
+            hint: 'Extremely fast JavaScript bundler',
+            value: 'esbuild',
           },
           {
-            label: "None (TypeScript compiler only)",
-            hint: "Use tsc directly",
-            value: "none",
+            label: 'None (TypeScript compiler only)',
+            hint: 'Use tsc directly',
+            value: 'none',
           },
         ],
       });
-      if (typeof buildToolResponse === "symbol") {
-        throw new Error("Prompt cancelled");
+      if (typeof buildToolResponse === 'symbol') {
+        throw new Error('Prompt cancelled');
       }
-      customizations.buildTool = buildToolResponse ?? "tsup";
+      customizations.buildTool = buildToolResponse ?? 'tsup';
     }
 
     // ESLint
     const eslintResponse = await confirm({
-      message: "Add ESLint?",
+      message: 'Add ESLint?',
       initialValue: true,
     });
-    if (typeof eslintResponse === "symbol") {
-      throw new Error("Prompt cancelled");
+    if (typeof eslintResponse === 'symbol') {
+      throw new Error('Prompt cancelled');
     }
     customizations.eslint = eslintResponse ?? true;
 
     // Prettier
     const prettierResponse = await confirm({
-      message: "Add Prettier?",
+      message: 'Add Prettier?',
       initialValue: false,
     });
-    if (typeof prettierResponse === "symbol") {
-      throw new Error("Prompt cancelled");
+    if (typeof prettierResponse === 'symbol') {
+      throw new Error('Prompt cancelled');
     }
     customizations.prettier = prettierResponse ?? false;
 
     // Test framework
     const testFrameworkResponse = await select({
-      message: "Add test setup?",
+      message: 'Add test setup?',
       options: [
-        { label: "None", value: "none" },
+        { label: 'None', value: 'none' },
         {
-          label: "Vitest",
-          hint: "Fast, Vite-native test runner",
-          value: "vitest",
+          label: 'Vitest',
+          hint: 'Fast, Vite-native test runner',
+          value: 'vitest',
         },
         {
-          label: "Jest",
-          hint: "Widely adopted, great ecosystem",
-          value: "jest",
+          label: 'Jest',
+          hint: 'Widely adopted, great ecosystem',
+          value: 'jest',
         },
       ],
     });
-    if (typeof testFrameworkResponse === "symbol") {
-      throw new Error("Prompt cancelled");
+    if (typeof testFrameworkResponse === 'symbol') {
+      throw new Error('Prompt cancelled');
     }
     customizations.testFramework =
-      (testFrameworkResponse as NpmPackageCustomizations["testFramework"]) ??
-      "none";
+      (testFrameworkResponse as NpmPackageCustomizations['testFramework']) ?? 'none';
 
     return customizations;
   } catch (error) {
     logger.debug(`Prompt cancelled: ${error}`);
     return {
       typescript: true,
-      buildTool: "tsup",
+      buildTool: 'tsup',
       eslint: true,
       prettier: false,
-      testFramework: "none",
+      testFramework: 'none',
     };
   }
 }

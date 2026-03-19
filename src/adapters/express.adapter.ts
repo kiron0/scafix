@@ -1,55 +1,90 @@
-import { spinner } from "@clack/prompts";
-import { mkdir, writeFile } from "fs/promises";
-import { join } from "path";
-import type { ExpressCustomizations } from "../prompts/customizations.js";
-import { promptExpressCustomizations } from "../prompts/customizations.js";
-import type { CreateOptions, StackAdapter } from "../types/stack.js";
-import { exec } from "../utils/exec.js";
-import { getEslintPackages } from "../utils/eslint.js";
-import { logger } from "../utils/logger.js";
-import {
-  detectPackageManager,
-  getDevCommand,
-} from "../utils/package-manager.js";
-import { validateDirectory, validateProjectName } from "../utils/validate.js";
+import { spinner } from '@clack/prompts';
+import { mkdir, writeFile } from 'fs/promises';
+import { join } from 'path';
+import type { ExpressCustomizations } from '../prompts/customizations.js';
+import { promptExpressCustomizations } from '../prompts/customizations.js';
+import type { CreateOptions, StackAdapter } from '../types/stack.js';
+import { exec } from '../utils/exec.js';
+import { getEslintPackages } from '../utils/eslint.js';
+import { logger } from '../utils/logger.js';
+import { detectPackageManager, getDevCommand } from '../utils/package-manager.js';
+import { validateDirectory, validateProjectName } from '../utils/validate.js';
+
+function resolveBooleanOverride(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined;
+}
+
+function resolvePatternOverride(value: unknown): ExpressCustomizations['pattern'] | undefined {
+  return value === 'mvc' || value === 'rest' || value === 'layered' || value === 'simple'
+    ? value
+    : undefined;
+}
+
+function applyCustomizationOverrides(
+  customizations: ExpressCustomizations,
+  options: CreateOptions
+): ExpressCustomizations {
+  return {
+    ...customizations,
+    ...(resolveBooleanOverride(options.typescript) === undefined
+      ? {}
+      : { typescript: resolveBooleanOverride(options.typescript) }),
+    ...(resolvePatternOverride(options.pattern) === undefined
+      ? {}
+      : { pattern: resolvePatternOverride(options.pattern) }),
+    ...(resolveBooleanOverride(options.eslint) === undefined
+      ? {}
+      : { eslint: resolveBooleanOverride(options.eslint) }),
+    ...(resolveBooleanOverride(options.prettier) === undefined
+      ? {}
+      : { prettier: resolveBooleanOverride(options.prettier) }),
+    ...(resolveBooleanOverride(options.cors) === undefined
+      ? {}
+      : { cors: resolveBooleanOverride(options.cors) }),
+    ...(resolveBooleanOverride(options.helmet) === undefined
+      ? {}
+      : { helmet: resolveBooleanOverride(options.helmet) }),
+    ...(resolveBooleanOverride(options.dotenv) === undefined
+      ? {}
+      : { dotenv: resolveBooleanOverride(options.dotenv) }),
+  };
+}
 
 function getDependencyInstallArgs(
   packageManager: string,
   packages: string[],
-  dev = false,
+  dev = false
 ): string[] {
-  if (packageManager === "bun") {
-    return dev ? ["add", "-d", ...packages] : ["add", ...packages];
+  if (packageManager === 'bun') {
+    return dev ? ['add', '-d', ...packages] : ['add', ...packages];
   }
 
-  if (packageManager === "pnpm" || packageManager === "yarn") {
-    return dev ? ["add", "-D", ...packages] : ["add", ...packages];
+  if (packageManager === 'pnpm' || packageManager === 'yarn') {
+    return dev ? ['add', '-D', ...packages] : ['add', ...packages];
   }
 
-  return dev
-    ? ["install", "--save-dev", ...packages]
-    : ["install", "--save", ...packages];
+  return dev ? ['install', '--save-dev', ...packages] : ['install', '--save', ...packages];
 }
 
 async function generatePatternStructure(
   projectPath: string,
-  pattern: ExpressCustomizations["pattern"],
-  customizations: ExpressCustomizations,
+  pattern: ExpressCustomizations['pattern'],
+  customizations: ExpressCustomizations
 ): Promise<void> {
-  const ext = customizations.typescript ? "ts" : "js";
-  const srcPath = join(projectPath, "src");
+  const ext = customizations.typescript ? 'ts' : 'js';
+  const srcPath = join(projectPath, 'src');
 
   switch (pattern) {
-    case "mvc":
+    case 'mvc':
       await generateMVCStructure(srcPath, ext, customizations);
       break;
-    case "rest":
+    case 'rest':
       await generateRESTStructure(srcPath, ext, customizations);
       break;
-    case "layered":
+    case 'layered':
       await generateLayeredStructure(srcPath, ext, customizations);
       break;
-    case "simple":
+    case 'simple':
       await generateSimpleStructure(srcPath, ext, customizations);
       break;
   }
@@ -58,14 +93,14 @@ async function generatePatternStructure(
 async function generateMVCStructure(
   srcPath: string,
   ext: string,
-  customizations: ExpressCustomizations,
+  customizations: ExpressCustomizations
 ): Promise<void> {
   // Create directories
-  await mkdir(join(srcPath, "models"), { recursive: true });
-  await mkdir(join(srcPath, "views"), { recursive: true });
-  await mkdir(join(srcPath, "controllers"), { recursive: true });
-  await mkdir(join(srcPath, "routes"), { recursive: true });
-  await mkdir(join(srcPath, "middleware"), { recursive: true });
+  await mkdir(join(srcPath, 'models'), { recursive: true });
+  await mkdir(join(srcPath, 'views'), { recursive: true });
+  await mkdir(join(srcPath, 'controllers'), { recursive: true });
+  await mkdir(join(srcPath, 'routes'), { recursive: true });
+  await mkdir(join(srcPath, 'middleware'), { recursive: true });
 
   // Generate index.ts/js
   let indexContent = `import express from 'express'`;
@@ -101,7 +136,7 @@ router.use('/example', exampleRoutes)
 
 export default router
 `;
-  await writeFile(join(srcPath, "routes", `index.${ext}`), routesContent);
+  await writeFile(join(srcPath, 'routes', `index.${ext}`), routesContent);
 
   // Generate example route
   const exampleRouteContent = `import { Router } from 'express'
@@ -117,10 +152,7 @@ router.delete('/:id', exampleController.remove)
 
 export default router
 `;
-  await writeFile(
-    join(srcPath, "routes", `example.${ext}`),
-    exampleRouteContent,
-  );
+  await writeFile(join(srcPath, 'routes', `example.${ext}`), exampleRouteContent);
 
   // Generate controller
   const controllerContent = `import { Request, Response } from 'express'
@@ -186,14 +218,11 @@ export const remove = async (req: Request, res: Response) => {
   const finalControllerContent = customizations.typescript
     ? controllerContent
     : controllerContent
-        .replace(/:\s*Request/g, "")
-        .replace(/:\s*Response/g, "")
-        .replace(/:\s*string/g, "")
-        .replace(/:\s*any/g, "");
-  await writeFile(
-    join(srcPath, "controllers", `example.${ext}`),
-    finalControllerContent,
-  );
+        .replace(/:\s*Request/g, '')
+        .replace(/:\s*Response/g, '')
+        .replace(/:\s*string/g, '')
+        .replace(/:\s*any/g, '');
+  await writeFile(join(srcPath, 'controllers', `example.${ext}`), finalControllerContent);
 
   // Generate model
   const modelContent = `export const findAll = async () => {
@@ -223,19 +252,19 @@ export const remove = async (id: string) => {
 `;
   const finalModelContent = customizations.typescript
     ? modelContent
-    : modelContent.replace(/:\s*string/g, "").replace(/:\s*any/g, "");
-  await writeFile(join(srcPath, "models", `example.${ext}`), finalModelContent);
+    : modelContent.replace(/:\s*string/g, '').replace(/:\s*any/g, '');
+  await writeFile(join(srcPath, 'models', `example.${ext}`), finalModelContent);
 }
 
 async function generateRESTStructure(
   srcPath: string,
   ext: string,
-  customizations: ExpressCustomizations,
+  customizations: ExpressCustomizations
 ): Promise<void> {
-  await mkdir(join(srcPath, "routes"), { recursive: true });
-  await mkdir(join(srcPath, "controllers"), { recursive: true });
-  await mkdir(join(srcPath, "services"), { recursive: true });
-  await mkdir(join(srcPath, "middleware"), { recursive: true });
+  await mkdir(join(srcPath, 'routes'), { recursive: true });
+  await mkdir(join(srcPath, 'controllers'), { recursive: true });
+  await mkdir(join(srcPath, 'services'), { recursive: true });
+  await mkdir(join(srcPath, 'middleware'), { recursive: true });
 
   let indexContent = `import express from 'express'`;
   if (customizations.dotenv) indexContent += `\nimport 'dotenv/config'`;
@@ -270,7 +299,7 @@ router.use('/users', userRoutes)
 
 export default router
 `;
-  await writeFile(join(srcPath, "routes", `api.${ext}`), apiRoutesContent);
+  await writeFile(join(srcPath, 'routes', `api.${ext}`), apiRoutesContent);
 
   // Generate user routes
   const userRoutesContent = `import { Router } from 'express'
@@ -286,7 +315,7 @@ router.delete('/:id', userController.deleteUser)
 
 export default router
 `;
-  await writeFile(join(srcPath, "routes", `users.${ext}`), userRoutesContent);
+  await writeFile(join(srcPath, 'routes', `users.${ext}`), userRoutesContent);
 
   // Generate controller
   const controllerContent = `import { Request, Response } from 'express'
@@ -349,14 +378,11 @@ export const deleteUser = async (req: Request, res: Response) => {
   const finalUserControllerContent = customizations.typescript
     ? controllerContent
     : controllerContent
-        .replace(/:\s*Request/g, "")
-        .replace(/:\s*Response/g, "")
-        .replace(/:\s*string/g, "")
-        .replace(/:\s*any/g, "");
-  await writeFile(
-    join(srcPath, "controllers", `user.${ext}`),
-    finalUserControllerContent,
-  );
+        .replace(/:\s*Request/g, '')
+        .replace(/:\s*Response/g, '')
+        .replace(/:\s*string/g, '')
+        .replace(/:\s*any/g, '');
+  await writeFile(join(srcPath, 'controllers', `user.${ext}`), finalUserControllerContent);
 
   // Generate service
   const serviceContent = `export const getAllUsers = async () => {
@@ -386,21 +412,18 @@ export const deleteUser = async (id: string) => {
 `;
   const finalServiceContent = customizations.typescript
     ? serviceContent
-    : serviceContent.replace(/:\s*string/g, "").replace(/:\s*any/g, "");
-  await writeFile(
-    join(srcPath, "services", `user.${ext}`),
-    finalServiceContent,
-  );
+    : serviceContent.replace(/:\s*string/g, '').replace(/:\s*any/g, '');
+  await writeFile(join(srcPath, 'services', `user.${ext}`), finalServiceContent);
 }
 
 async function generateLayeredStructure(
   srcPath: string,
   ext: string,
-  customizations: ExpressCustomizations,
+  customizations: ExpressCustomizations
 ): Promise<void> {
-  await mkdir(join(srcPath, "presentation"), { recursive: true });
-  await mkdir(join(srcPath, "business"), { recursive: true });
-  await mkdir(join(srcPath, "data"), { recursive: true });
+  await mkdir(join(srcPath, 'presentation'), { recursive: true });
+  await mkdir(join(srcPath, 'business'), { recursive: true });
+  await mkdir(join(srcPath, 'data'), { recursive: true });
 
   let indexContent = `import express from 'express'`;
   if (customizations.dotenv) indexContent += `\nimport 'dotenv/config'`;
@@ -439,10 +462,7 @@ router.delete('/products/:id', productController.deleteProduct)
 
 export default router
 `;
-  await writeFile(
-    join(srcPath, "presentation", `routes.${ext}`),
-    routesContent,
-  );
+  await writeFile(join(srcPath, 'presentation', `routes.${ext}`), routesContent);
 
   // Generate controller
   const controllerContent = `import { Request, Response } from 'express'
@@ -502,19 +522,19 @@ export const deleteProduct = async (req: Request, res: Response) => {
   }
 }
 `;
-  await mkdir(join(srcPath, "presentation", "controllers"), {
+  await mkdir(join(srcPath, 'presentation', 'controllers'), {
     recursive: true,
   });
   const finalProductControllerContent = customizations.typescript
     ? controllerContent
     : controllerContent
-        .replace(/:\s*Request/g, "")
-        .replace(/:\s*Response/g, "")
-        .replace(/:\s*string/g, "")
-        .replace(/:\s*any/g, "");
+        .replace(/:\s*Request/g, '')
+        .replace(/:\s*Response/g, '')
+        .replace(/:\s*string/g, '')
+        .replace(/:\s*any/g, '');
   await writeFile(
-    join(srcPath, "presentation", "controllers", `product.${ext}`),
-    finalProductControllerContent,
+    join(srcPath, 'presentation', 'controllers', `product.${ext}`),
+    finalProductControllerContent
   );
 
   // Generate business layer
@@ -544,11 +564,8 @@ export const deleteProduct = async (id: string) => {
 `;
   const finalBusinessContent = customizations.typescript
     ? businessContent
-    : businessContent.replace(/:\s*string/g, "").replace(/:\s*any/g, "");
-  await writeFile(
-    join(srcPath, "business", `product.${ext}`),
-    finalBusinessContent,
-  );
+    : businessContent.replace(/:\s*string/g, '').replace(/:\s*any/g, '');
+  await writeFile(join(srcPath, 'business', `product.${ext}`), finalBusinessContent);
 
   // Generate data layer
   const dataContent = `export const findAll = async () => {
@@ -578,17 +595,17 @@ export const remove = async (id: string) => {
 `;
   const finalDataContent = customizations.typescript
     ? dataContent
-    : dataContent.replace(/:\s*string/g, "").replace(/:\s*any/g, "");
-  await writeFile(join(srcPath, "data", `product.${ext}`), finalDataContent);
+    : dataContent.replace(/:\s*string/g, '').replace(/:\s*any/g, '');
+  await writeFile(join(srcPath, 'data', `product.${ext}`), finalDataContent);
 }
 
 async function generateSimpleStructure(
   srcPath: string,
   ext: string,
-  customizations: ExpressCustomizations,
+  customizations: ExpressCustomizations
 ): Promise<void> {
-  await mkdir(join(srcPath, "routes"), { recursive: true });
-  await mkdir(join(srcPath, "middleware"), { recursive: true });
+  await mkdir(join(srcPath, 'routes'), { recursive: true });
+  await mkdir(join(srcPath, 'middleware'), { recursive: true });
 
   let indexContent = `import express from 'express'`;
   if (customizations.dotenv) indexContent += `\nimport 'dotenv/config'`;
@@ -628,29 +645,28 @@ router.get('/health', (req, res) => {
 
 export default router
 `;
-  await writeFile(join(srcPath, "routes", `index.${ext}`), routesContent);
+  await writeFile(join(srcPath, 'routes', `index.${ext}`), routesContent);
 }
 
 export const expressAdapter: StackAdapter = {
-  id: "express",
-  name: "Node.js + Express + TypeScript",
-  description: "Express server with TypeScript",
+  id: 'express',
+  name: 'Node.js + Express + TypeScript',
+  description: 'Express server with TypeScript',
   backend: true,
 
   async create(options: CreateOptions): Promise<void> {
-    const {
-      projectName,
-      directory = projectName,
-      packageManager = "npm",
-      yes = false,
-    } = options;
+    const { projectName, directory = projectName, packageManager = 'npm', yes = false } = options;
 
     if (!validateProjectName(projectName)) {
-      throw new Error("Invalid project name");
+      throw new Error('Invalid project name');
     }
 
     const projectPath = join(process.cwd(), directory);
     const dirInfo = validateDirectory(directory);
+
+    if (!dirInfo.valid) {
+      throw new Error(dirInfo.reason ?? `Invalid directory: ${directory}`);
+    }
 
     if (dirInfo.exists) {
       throw new Error(`Directory ${directory} already exists`);
@@ -659,9 +675,12 @@ export const expressAdapter: StackAdapter = {
     logger.info(`Creating Express project: ${projectName}`);
 
     // Prompt for customizations
-    const customizations = await promptExpressCustomizations({
-      yes: Boolean(options.yes),
-    });
+    const customizations = applyCustomizationOverrides(
+      await promptExpressCustomizations({
+        yes: Boolean(options.yes),
+      }),
+      options
+    );
 
     try {
       // Create project directory
@@ -670,71 +689,55 @@ export const expressAdapter: StackAdapter = {
       // Create package.json
       const packageJson = {
         name: projectName,
-        version: "0.0.1",
-        description: "",
-        main: customizations.typescript ? "dist/index.js" : "src/index.js",
-        type: "module",
+        version: '0.0.1',
+        description: '',
+        main: customizations.typescript ? 'dist/index.js' : 'src/index.js',
+        type: 'module',
         scripts: {
-          dev: customizations.typescript
-            ? "tsx watch src/index.ts"
-            : "node --watch src/index.js",
-          build: customizations.typescript
-            ? "tsc"
-            : 'echo "No build step needed"',
-          start: customizations.typescript
-            ? "node dist/index.js"
-            : "node src/index.js",
+          dev: customizations.typescript ? 'tsx watch src/index.ts' : 'node --watch src/index.js',
+          build: customizations.typescript ? 'tsc' : 'echo "No build step needed"',
+          start: customizations.typescript ? 'node dist/index.js' : 'node src/index.js',
           ...(customizations.eslint
             ? {
-                lint: `eslint "src/**/*.${customizations.typescript ? "ts" : "js"}"`,
+                lint: `eslint "src/**/*.${customizations.typescript ? 'ts' : 'js'}"`,
               }
             : {}),
         },
         keywords: [],
-        author: "",
-        license: "MIT",
+        author: '',
+        license: 'MIT',
       };
 
-      await writeFile(
-        join(projectPath, "package.json"),
-        JSON.stringify(packageJson, null, 2),
-      );
+      await writeFile(join(projectPath, 'package.json'), JSON.stringify(packageJson, null, 2));
 
       // Create tsconfig.json if TypeScript is enabled
       if (customizations.typescript) {
         const tsconfig = {
           compilerOptions: {
-            target: "ES2022",
-            module: "ES2022",
-            lib: ["ES2022"],
-            moduleResolution: "node",
-            outDir: "./dist",
-            rootDir: "./src",
+            target: 'ES2022',
+            module: 'ES2022',
+            lib: ['ES2022'],
+            moduleResolution: 'node',
+            outDir: './dist',
+            rootDir: './src',
             strict: true,
             esModuleInterop: true,
             skipLibCheck: true,
             forceConsistentCasingInFileNames: true,
             resolveJsonModule: true,
           },
-          include: ["src/**/*"],
-          exclude: ["node_modules", "dist"],
+          include: ['src/**/*'],
+          exclude: ['node_modules', 'dist'],
         };
 
-        await writeFile(
-          join(projectPath, "tsconfig.json"),
-          JSON.stringify(tsconfig, null, 2),
-        );
+        await writeFile(join(projectPath, 'tsconfig.json'), JSON.stringify(tsconfig, null, 2));
       }
 
       // Create src directory structure based on pattern
-      await mkdir(join(projectPath, "src"), { recursive: true });
+      await mkdir(join(projectPath, 'src'), { recursive: true });
 
       // Generate pattern-specific structure
-      await generatePatternStructure(
-        projectPath,
-        customizations.pattern,
-        customizations,
-      );
+      await generatePatternStructure(projectPath, customizations.pattern, customizations);
 
       // Create .gitignore
       const gitignore = `node_modules
@@ -743,57 +746,48 @@ dist
 *.log
 .DS_Store
 `;
-      await writeFile(join(projectPath, ".gitignore"), gitignore);
+      await writeFile(join(projectPath, '.gitignore'), gitignore);
 
       // Install dependencies
       const installSpinner = spinner();
-      installSpinner.start("Installing dependencies...");
+      installSpinner.start('Installing dependencies...');
       const installCommand =
-        packageManager === "bun"
-          ? "bun"
-          : packageManager === "pnpm"
-            ? "pnpm"
-            : packageManager === "yarn"
-              ? "yarn"
-              : "npm";
+        packageManager === 'bun'
+          ? 'bun'
+          : packageManager === 'pnpm'
+            ? 'pnpm'
+            : packageManager === 'yarn'
+              ? 'yarn'
+              : 'npm';
 
-      const dependencies: string[] = ["express"];
+      const dependencies: string[] = ['express'];
       const devDependencies: string[] = [];
 
       if (customizations.typescript) {
-        devDependencies.push(
-          "tsx",
-          "@types/express",
-          "@types/node",
-          "typescript",
-        );
+        devDependencies.push('tsx', '@types/express', '@types/node', 'typescript');
       }
 
       if (customizations.dotenv) {
-        dependencies.push("dotenv");
+        dependencies.push('dotenv');
       }
 
       if (customizations.cors) {
-        dependencies.push("cors");
+        dependencies.push('cors');
         if (customizations.typescript) {
-          devDependencies.push("@types/cors");
+          devDependencies.push('@types/cors');
         }
       }
 
       if (customizations.helmet) {
-        dependencies.push("helmet");
+        dependencies.push('helmet');
       }
 
       try {
         if (dependencies.length > 0) {
-          await exec(
-            installCommand,
-            getDependencyInstallArgs(packageManager, dependencies),
-            {
-              cwd: projectPath,
-              stdio: "inherit",
-            },
-          );
+          await exec(installCommand, getDependencyInstallArgs(packageManager, dependencies), {
+            cwd: projectPath,
+            stdio: 'inherit',
+          });
         }
 
         if (devDependencies.length > 0) {
@@ -802,33 +796,29 @@ dist
             getDependencyInstallArgs(packageManager, devDependencies, true),
             {
               cwd: projectPath,
-              stdio: "inherit",
-            },
+              stdio: 'inherit',
+            }
           );
         }
 
-        installSpinner.stop("Dependencies installed");
+        installSpinner.stop('Dependencies installed');
       } catch (error) {
-        installSpinner.stop("Failed to install dependencies");
+        installSpinner.stop('Failed to install dependencies');
         throw error;
       }
 
       // Setup ESLint if requested
       if (customizations.eslint) {
         const eslintSpinner = spinner();
-        eslintSpinner.start("Setting up ESLint...");
+        eslintSpinner.start('Setting up ESLint...');
         try {
           const eslintPackages = getEslintPackages({
             typescript: customizations.typescript,
           });
-          const eslintArgs = getDependencyInstallArgs(
-            packageManager,
-            eslintPackages,
-            true,
-          );
+          const eslintArgs = getDependencyInstallArgs(packageManager, eslintPackages, true);
           await exec(installCommand, eslintArgs, {
             cwd: projectPath,
-            stdio: "inherit",
+            stdio: 'inherit',
           });
 
           const eslintConfig = customizations.typescript
@@ -869,10 +859,10 @@ dist
   },
 };`;
 
-          await writeFile(join(projectPath, ".eslintrc.cjs"), eslintConfig);
-          eslintSpinner.stop("ESLint configured");
+          await writeFile(join(projectPath, '.eslintrc.cjs'), eslintConfig);
+          eslintSpinner.stop('ESLint configured');
         } catch (error) {
-          eslintSpinner.stop("Failed to setup ESLint");
+          eslintSpinner.stop('Failed to setup ESLint');
           throw error;
         }
       }
@@ -880,17 +870,17 @@ dist
       // Setup Prettier if requested
       if (customizations.prettier) {
         const prettierSpinner = spinner();
-        prettierSpinner.start("Setting up Prettier...");
+        prettierSpinner.start('Setting up Prettier...');
         try {
           const prettierArgs =
-            packageManager === "bun"
-              ? ["add", "-d", "prettier"]
-              : packageManager === "pnpm" || packageManager === "yarn"
-                ? ["add", "-D", "prettier"]
-                : ["install", "--save-dev", "prettier"];
+            packageManager === 'bun'
+              ? ['add', '-d', 'prettier']
+              : packageManager === 'pnpm' || packageManager === 'yarn'
+                ? ['add', '-D', 'prettier']
+                : ['install', '--save-dev', 'prettier'];
           await exec(installCommand, prettierArgs, {
             cwd: projectPath,
-            stdio: "inherit",
+            stdio: 'inherit',
           });
 
           const prettierConfig = `{
@@ -899,16 +889,16 @@ dist
   "tabWidth": 2,
   "trailingComma": "es5"
 }`;
-          await writeFile(join(projectPath, ".prettierrc"), prettierConfig);
+          await writeFile(join(projectPath, '.prettierrc'), prettierConfig);
 
           const prettierIgnore = `node_modules
 dist
 build
 .coverage`;
-          await writeFile(join(projectPath, ".prettierignore"), prettierIgnore);
-          prettierSpinner.stop("Prettier configured");
+          await writeFile(join(projectPath, '.prettierignore'), prettierIgnore);
+          prettierSpinner.stop('Prettier configured');
         } catch (error) {
-          prettierSpinner.stop("Failed to setup Prettier");
+          prettierSpinner.stop('Failed to setup Prettier');
           throw error;
         }
       }
@@ -922,7 +912,7 @@ build
       logger.info(`  ${getDevCommand(detectedPm)}`);
     } catch (error) {
       logger.error(
-        `Failed to create project: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to create project: ${error instanceof Error ? error.message : String(error)}`
       );
       throw error;
     }

@@ -26,11 +26,17 @@ npx scafix
 # Interactive mode
 npx scafix
 
+# Interactive mode with shared root flags
+npx scafix --name my-app --directory apps/my-app --package-manager pnpm
+
 # Create a project (interactive official CLIs where available)
 npx scafix create <stack>
 
 # Examples
+npx scafix --name api-starter --directory services/api
 npx scafix create vite
+npx scafix create vite --name web-app --package-manager bun
+npx scafix create next --name dashboard --yes --package-manager pnpm
 npx scafix create next
 npx scafix create express
 npx scafix create npm

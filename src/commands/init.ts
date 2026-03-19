@@ -1,32 +1,33 @@
-import { spinner } from "@clack/prompts";
-import { join } from "path";
-import { adapters } from "../adapters/index.js";
+import { spinner } from '@clack/prompts';
+import { join } from 'path';
+import { adapters } from '../adapters/index.js';
 import {
   promptDirectory,
   promptGit,
   promptPackageManager,
   promptProjectName,
   selectStack,
-} from "../prompts/select-stack.js";
-import type { CliOptions, CreateOptions } from "../types/stack.js";
-import { exec } from "../utils/exec.js";
-import { CliExitError, isCliExitError } from "../utils/cli-error.js";
-import { logger } from "../utils/logger.js";
+} from '../prompts/select-stack.js';
+import type { CliOptions, CreateOptions } from '../types/stack.js';
+import { exec } from '../utils/exec.js';
+import { CliExitError, isCliExitError } from '../utils/cli-error.js';
+import { logger } from '../utils/logger.js';
 import {
   detectPackageManagerFromCwd,
   resolvePackageManagerOption,
-} from "../utils/package-manager.js";
+} from '../utils/package-manager.js';
 import {
   getDefaultDirectoryName,
+  validateDirectory,
   validateNpmPackageName,
   validateProjectName,
-} from "../utils/validate.js";
+} from '../utils/validate.js';
 
 export async function initCommand(options: CliOptions = {}): Promise<void> {
   try {
     if (options.yes) {
       logger.error(
-        "Non-interactive usage requires an explicit stack: use `scafix create <stack> --yes`.",
+        'Non-interactive usage requires an explicit stack: use `scafix create <stack> --yes`.'
       );
       throw new CliExitError(1);
     }
@@ -37,16 +38,14 @@ export async function initCommand(options: CliOptions = {}): Promise<void> {
     }
 
     logger.info(`Selected: ${adapter.name}`);
-    logger.info("");
+    logger.info('');
 
     // Prompt for project name only when it is not already provided.
-    let projectName = (options.name || options.projectName) as
-      | string
-      | undefined;
+    let projectName = (options.name || options.projectName) as string | undefined;
     if (!projectName) {
       projectName = await promptProjectName({
         yes: options.yes,
-        default: "my-project",
+        default: 'my-project',
       });
     }
     if (!projectName) {
@@ -54,21 +53,16 @@ export async function initCommand(options: CliOptions = {}): Promise<void> {
     }
 
     const isValidProjectName =
-      adapter.id === "npm"
-        ? validateNpmPackageName(projectName)
-        : validateProjectName(projectName);
+      adapter.id === 'npm' ? validateNpmPackageName(projectName) : validateProjectName(projectName);
     if (!isValidProjectName) {
       throw new CliExitError(1);
     }
 
     // Prompt for directory only when it is not already provided.
     const hasExplicitDirectory =
-      typeof options.directory === "string" &&
-      options.directory.trim().length > 0;
+      typeof options.directory === 'string' && options.directory.trim().length > 0;
     const defaultDirectory = getDefaultDirectoryName(projectName);
-    let directory = hasExplicitDirectory
-      ? (options.directory as string)
-      : defaultDirectory;
+    let directory = hasExplicitDirectory ? (options.directory as string) : defaultDirectory;
     if (!hasExplicitDirectory && !options.yes) {
       const dirResponse = await promptDirectory(defaultDirectory, {
         yes: options.yes,
@@ -78,19 +72,21 @@ export async function initCommand(options: CliOptions = {}): Promise<void> {
       }
     }
 
+    const dirInfo = validateDirectory(directory);
+    if (!dirInfo.valid) {
+      logger.error(dirInfo.reason ?? `Invalid directory: ${directory}`);
+      throw new CliExitError(1);
+    }
+
     // Detect or prompt for package manager
-    let packageManager: "npm" | "pnpm" | "yarn" | "bun" = "npm";
+    let packageManager: 'npm' | 'pnpm' | 'yarn' | 'bun' = 'npm';
 
     // First, check if explicitly provided via CLI
     if (options.packageManager !== undefined) {
-      const resolvedPackageManager = resolvePackageManagerOption(
-        options.packageManager,
-      );
+      const resolvedPackageManager = resolvePackageManagerOption(options.packageManager);
       if (!resolvedPackageManager) {
-        logger.error(
-          `Unsupported package manager: ${String(options.packageManager)}`,
-        );
-        logger.info("Supported package managers: npm, pnpm, yarn, bun");
+        logger.error(`Unsupported package manager: ${String(options.packageManager)}`);
+        logger.info('Supported package managers: npm, pnpm, yarn, bun');
         throw new CliExitError(1);
       }
 
@@ -128,9 +124,9 @@ export async function initCommand(options: CliOptions = {}): Promise<void> {
       git,
     };
 
-    logger.info("");
-    logger.info("Creating project...");
-    logger.info("");
+    logger.info('');
+    logger.info('Creating project...');
+    logger.info('');
 
     // Create the project
     await adapter.create(createOptions);
@@ -138,32 +134,28 @@ export async function initCommand(options: CliOptions = {}): Promise<void> {
     // Initialize Git if requested
     if (git) {
       const gitSpinner = spinner();
-      gitSpinner.start("Initializing Git repository...");
+      gitSpinner.start('Initializing Git repository...');
       const projectPath = join(process.cwd(), directory);
       try {
-        await exec("git", ["init"], { cwd: projectPath, stdio: "pipe" });
-        gitSpinner.stop("Git repository initialized");
+        await exec('git', ['init'], { cwd: projectPath, stdio: 'pipe' });
+        gitSpinner.stop('Git repository initialized');
       } catch (error) {
-        gitSpinner.stop("Failed to initialize Git repository");
+        gitSpinner.stop('Failed to initialize Git repository');
         logger.debug(`Git init error: ${error}`);
       }
     }
 
-    logger.info("");
-    logger.success("Project created successfully!");
+    logger.info('');
+    logger.success('Project created successfully!');
   } catch (error) {
     if (isCliExitError(error)) {
       throw error;
     }
 
     if (options.debug) {
-      logger.error(
-        `Error: ${error instanceof Error ? error.stack : String(error)}`,
-      );
+      logger.error(`Error: ${error instanceof Error ? error.stack : String(error)}`);
     } else {
-      logger.error(
-        `Error: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      logger.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
     }
     throw new CliExitError(1);
   }

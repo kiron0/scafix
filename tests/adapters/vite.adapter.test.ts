@@ -1,7 +1,7 @@
-import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "fs/promises";
-import { tmpdir } from "os";
-import { join } from "path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'fs/promises';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   exec: vi.fn(),
@@ -15,35 +15,35 @@ const mocks = vi.hoisted(() => ({
   promptViteReactCustomizations: vi.fn(),
 }));
 
-vi.mock("@clack/prompts", () => ({
+vi.mock('@clack/prompts', () => ({
   spinner: () => ({
     start: vi.fn(),
     stop: vi.fn(),
   }),
 }));
 
-vi.mock("../../src/prompts/customizations.js", () => ({
+vi.mock('../../src/prompts/customizations.js', () => ({
   promptViteReactCustomizations: mocks.promptViteReactCustomizations,
 }));
 
-vi.mock("../../src/utils/exec.js", () => ({
+vi.mock('../../src/utils/exec.js', () => ({
   exec: mocks.exec,
 }));
 
-vi.mock("../../src/utils/logger.js", () => ({
+vi.mock('../../src/utils/logger.js', () => ({
   logger: mocks.logger,
 }));
 
-import { viteReactAdapter } from "../../src/adapters/vite.adapter.js";
+import { viteReactAdapter } from '../../src/adapters/vite.adapter.js';
 
-describe.sequential("viteReactAdapter", () => {
+describe.sequential('viteReactAdapter', () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;
   let tempDir: string;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    tempDir = await mkdtemp(join(tmpdir(), "scafix-vite-adapter-"));
-    cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tempDir);
+    tempDir = await mkdtemp(join(tmpdir(), 'scafix-vite-adapter-'));
+    cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(tempDir);
     mocks.exec.mockImplementation(async (_command, args, options) => {
       const projectName = args[2] as string | undefined;
       if (!projectName || options?.cwd !== tempDir) {
@@ -51,12 +51,9 @@ describe.sequential("viteReactAdapter", () => {
       }
 
       const projectPath = join(tempDir, projectName);
-      await mkdir(join(projectPath, "src"), { recursive: true });
-      await writeFile(join(projectPath, "src", "index.css"), "body {}\n");
-      await writeFile(
-        join(projectPath, "vite.config.js"),
-        "export default { plugins: [] }\n",
-      );
+      await mkdir(join(projectPath, 'src'), { recursive: true });
+      await writeFile(join(projectPath, 'src', 'index.css'), 'body {}\n');
+      await writeFile(join(projectPath, 'vite.config.js'), 'export default { plugins: [] }\n');
     });
   });
 
@@ -65,7 +62,7 @@ describe.sequential("viteReactAdapter", () => {
     await rm(tempDir, { force: true, recursive: true });
   });
 
-  it("uses shared customizations to select the Vite template in --yes mode", async () => {
+  it('uses shared customizations to select the Vite template in --yes mode', async () => {
     mocks.promptViteReactCustomizations.mockResolvedValue({
       prettier: false,
       shadcn: false,
@@ -74,8 +71,8 @@ describe.sequential("viteReactAdapter", () => {
     });
 
     await viteReactAdapter.create({
-      packageManager: "npm",
-      projectName: "demo-vite",
+      packageManager: 'npm',
+      projectName: 'demo-vite',
       yes: true,
     });
 
@@ -83,128 +80,119 @@ describe.sequential("viteReactAdapter", () => {
       yes: true,
     });
     expect(mocks.exec).toHaveBeenCalledWith(
-      "npm",
-      ["create", "vite@latest", "demo-vite", "--", "--template", "react-ts"],
+      'npm',
+      ['create', 'vite@latest', 'demo-vite', '--', '--template', 'react-ts'],
       expect.objectContaining({
         cwd: tempDir,
-        stdio: "inherit",
-      }),
+        stdio: 'inherit',
+      })
     );
   });
 
-  it("applies JS template, tailwind v3, and prettier when requested", async () => {
+  it('applies JS template, tailwind v3, and prettier when requested', async () => {
     mocks.promptViteReactCustomizations.mockResolvedValue({
       prettier: true,
       shadcn: false,
       tailwind: true,
-      tailwindVersion: "v3",
+      tailwindVersion: 'v3',
       typescript: false,
     });
     await viteReactAdapter.create({
-      directory: "demo-vite-js",
-      packageManager: "pnpm",
-      projectName: "demo-vite-js",
+      directory: 'demo-vite-js',
+      packageManager: 'pnpm',
+      projectName: 'demo-vite-js',
     });
 
-    const projectPath = join(tempDir, "demo-vite-js");
+    const projectPath = join(tempDir, 'demo-vite-js');
 
     expect(mocks.exec).toHaveBeenCalledWith(
-      "pnpm",
-      ["create", "vite", "demo-vite-js", "--template", "react"],
+      'pnpm',
+      ['create', 'vite', 'demo-vite-js', '--template', 'react'],
       expect.objectContaining({
         cwd: tempDir,
-        stdio: "inherit",
-      }),
+        stdio: 'inherit',
+      })
     );
     expect(mocks.exec).toHaveBeenCalledWith(
-      "pnpm",
-      ["add", "-D", "tailwindcss@^3", "postcss", "autoprefixer"],
+      'pnpm',
+      ['add', '-D', 'tailwindcss@^3', 'postcss', 'autoprefixer'],
       expect.objectContaining({
         cwd: projectPath,
-        stdio: "pipe",
-      }),
+        stdio: 'pipe',
+      })
     );
     expect(mocks.exec).toHaveBeenCalledWith(
-      process.platform === "win32"
-        ? join(projectPath, "node_modules", ".bin", "tailwindcss.cmd")
-        : join(projectPath, "node_modules", ".bin", "tailwindcss"),
-      ["init", "-p"],
+      process.platform === 'win32'
+        ? join(projectPath, 'node_modules', '.bin', 'tailwindcss.cmd')
+        : join(projectPath, 'node_modules', '.bin', 'tailwindcss'),
+      ['init', '-p'],
       expect.objectContaining({
         cwd: projectPath,
-        stdio: "pipe",
-      }),
+        stdio: 'pipe',
+      })
     );
     expect(mocks.exec).toHaveBeenCalledWith(
-      "pnpm",
-      ["add", "-D", "prettier"],
+      'pnpm',
+      ['add', '-D', 'prettier'],
       expect.objectContaining({
         cwd: projectPath,
-        stdio: "pipe",
-      }),
+        stdio: 'pipe',
+      })
     );
-    await expect(
-      access(join(projectPath, ".prettierrc")),
-    ).resolves.toBeUndefined();
-    expect(
-      await readFile(join(projectPath, "src", "index.css"), "utf8"),
-    ).toContain("@tailwind base;");
+    await expect(access(join(projectPath, '.prettierrc'))).resolves.toBeUndefined();
+    expect(await readFile(join(projectPath, 'src', 'index.css'), 'utf8')).toContain(
+      '@tailwind base;'
+    );
   });
 
-  it("uses the selected package manager to run shadcn for bun projects", async () => {
+  it('uses the selected package manager to run shadcn for bun projects', async () => {
     mocks.promptViteReactCustomizations.mockResolvedValue({
       prettier: false,
       shadcn: true,
       tailwind: true,
-      tailwindVersion: "v4",
+      tailwindVersion: 'v4',
       typescript: true,
     });
 
     await viteReactAdapter.create({
-      directory: "demo-vite-bun",
-      packageManager: "bun",
-      projectName: "demo-vite-bun",
+      directory: 'demo-vite-bun',
+      packageManager: 'bun',
+      projectName: 'demo-vite-bun',
     });
 
     expect(mocks.exec).toHaveBeenCalledWith(
-      "bunx",
-      ["shadcn@latest", "init"],
+      'bunx',
+      ['shadcn@latest', 'init'],
       expect.objectContaining({
-        cwd: join(tempDir, "demo-vite-bun"),
-        stdio: "inherit",
-      }),
+        cwd: join(tempDir, 'demo-vite-bun'),
+        stdio: 'inherit',
+      })
     );
   });
 
   it.each([
     {
-      args: [
-        "create",
-        "vite@latest",
-        "demo-vite-npm",
-        "--",
-        "--template",
-        "react-ts",
-      ],
-      cmd: "npm",
-      packageManager: "npm",
+      args: ['create', 'vite@latest', 'demo-vite-npm', '--', '--template', 'react-ts'],
+      cmd: 'npm',
+      packageManager: 'npm',
     },
     {
-      args: ["create", "vite", "demo-vite-pnpm", "--template", "react-ts"],
-      cmd: "pnpm",
-      packageManager: "pnpm",
+      args: ['create', 'vite', 'demo-vite-pnpm', '--template', 'react-ts'],
+      cmd: 'pnpm',
+      packageManager: 'pnpm',
     },
     {
-      args: ["create", "vite", "demo-vite-yarn", "--template", "react-ts"],
-      cmd: "yarn",
-      packageManager: "yarn",
+      args: ['create', 'vite', 'demo-vite-yarn', '--template', 'react-ts'],
+      cmd: 'yarn',
+      packageManager: 'yarn',
     },
     {
-      args: ["create", "vite", "demo-vite-bun", "--template", "react-ts"],
-      cmd: "bun",
-      packageManager: "bun",
+      args: ['create', 'vite', 'demo-vite-bun', '--template', 'react-ts'],
+      cmd: 'bun',
+      packageManager: 'bun',
     },
   ])(
-    "covers the Vite external CLI command mapping for $packageManager",
+    'covers the Vite external CLI command mapping for $packageManager',
     async ({ args, cmd, packageManager }) => {
       mocks.promptViteReactCustomizations.mockResolvedValue({
         prettier: false,
@@ -225,9 +213,9 @@ describe.sequential("viteReactAdapter", () => {
         args,
         expect.objectContaining({
           cwd: tempDir,
-          stdio: "inherit",
-        }),
+          stdio: 'inherit',
+        })
       );
-    },
+    }
   );
 });
