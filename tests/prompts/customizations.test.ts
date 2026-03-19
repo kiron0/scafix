@@ -24,6 +24,7 @@ vi.mock('../../src/utils/logger.js', () => ({
 }));
 
 import {
+  promptAngularCustomizations,
   promptAstroCustomizations,
   promptExpressCustomizations,
   promptHonoCustomizations,
@@ -42,6 +43,7 @@ describe('promptViteReactCustomizations', () => {
 
   it('returns only supported defaults in --yes mode', async () => {
     const result = await promptViteReactCustomizations({ yes: true });
+    expect(result.framework).toBe('react');
     expect(result.typescript).toBe(true);
     expect(result.tailwind).toBe(false);
     expect(result.shadcn).toBe(false);
@@ -61,6 +63,20 @@ describe('promptViteReactCustomizations', () => {
     await expect(result).rejects.toBeInstanceOf(CliExitError);
     expect(mocks.cancel).toHaveBeenCalledWith(expect.stringContaining(APP_CONFIG.thankYouMessage));
     expect(mocks.logger.debug).toHaveBeenCalledWith(expect.stringContaining('Prompt cancelled'));
+  });
+});
+
+describe('promptAngularCustomizations', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns deterministic defaults in --yes mode', async () => {
+    const result = await promptAngularCustomizations({ yes: true });
+    expect(result.style).toBe('css');
+    expect(result.ssr).toBe(false);
+    expect(result.routing).toBe(true);
+    expect(result.zard).toBe(false);
   });
 });
 

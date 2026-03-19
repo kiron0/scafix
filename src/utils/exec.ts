@@ -5,6 +5,7 @@ export interface ExecOptions {
   cwd?: string;
   stdio?: 'inherit' | 'pipe' | 'ignore';
   env?: NodeJS.ProcessEnv;
+  input?: string;
 }
 
 export async function exec(
@@ -12,7 +13,7 @@ export async function exec(
   args: string[],
   options: ExecOptions = {}
 ): Promise<void> {
-  const { cwd = process.cwd(), stdio = 'inherit', env = process.env } = options;
+  const { cwd = process.cwd(), stdio = 'inherit', env = process.env, input } = options;
 
   logger.debug(`Executing: ${command} ${args.join(' ')}`);
 
@@ -20,6 +21,7 @@ export async function exec(
     await execa(command, args, {
       cwd,
       stdio,
+      input,
       env: { ...process.env, ...env },
     });
   } catch (error) {

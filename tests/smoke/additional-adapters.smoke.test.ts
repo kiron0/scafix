@@ -10,9 +10,11 @@ import { fastifyAdapter } from '../../src/adapters/fastify.adapter.js';
 import { remixAdapter } from '../../src/adapters/remix.adapter.js';
 import { t3Adapter } from '../../src/adapters/t3.adapter.js';
 import { tauriAdapter } from '../../src/adapters/tauri.adapter.js';
+import { useEphemeralPackageManagerCache } from './utils/package-manager-cache.js';
 import { runGeneratedCommand } from '../utils/scaffold.js';
 
 const describeIf = process.env.SCAFIX_RUN_NETWORK_SMOKE === '1' ? describe : describe.skip;
+useEphemeralPackageManagerCache();
 
 function isCommandAvailable(command: string): boolean {
   const lookupCommand = process.platform === 'win32' ? 'where' : 'which';
@@ -74,6 +76,33 @@ describeIf.sequential('additional adapter smoke', () => {
     runGeneratedCommand(projectPath, 'npm', ['run', 'build']);
   }, 300000);
 
+  itNpmIf('scaffolds and builds a real Angular project with zard/ui', async () => {
+    const projectName = 'smoke-angular-zard-app';
+
+    await angularAdapter.create({
+      directory: projectName,
+      packageManager: 'npm',
+      projectName,
+      style: 'css',
+      yes: true,
+      zard: true,
+    });
+
+    const projectPath = join(tempDir, projectName);
+    const packageJson = JSON.parse(await readFile(join(projectPath, 'package.json'), 'utf8'));
+    const componentsJson = JSON.parse(await readFile(join(projectPath, 'components.json'), 'utf8'));
+
+    await expect(access(join(projectPath, 'package.json'))).resolves.toBeUndefined();
+    await expect(access(join(projectPath, 'components.json'))).resolves.toBeUndefined();
+    await expect(access(join(projectPath, 'angular.json'))).resolves.toBeUndefined();
+    await expect(access(join(projectPath, 'src', 'main.ts'))).resolves.toBeUndefined();
+    await expect(access(join(projectPath, '.git'))).rejects.toThrow();
+    expect(packageJson.name).toBe(projectName);
+    expect(componentsJson.style).toBe('css');
+
+    runGeneratedCommand(projectPath, 'npm', ['run', 'build']);
+  }, 300000);
+
   itNpmIf('scaffolds a real Remix project', async () => {
     const projectName = 'smoke-remix-app';
 
@@ -107,10 +136,10 @@ describeIf.sequential('additional adapter smoke', () => {
     const packageJson = JSON.parse(await readFile(join(projectPath, 'package.json'), 'utf8'));
 
     await expect(access(join(projectPath, 'package.json'))).resolves.toBeUndefined();
-    await expect(access(join(projectPath, 'app.ts'))).resolves.toBeUndefined();
+    await expect(access(join(projectPath, 'src', 'app.ts'))).resolves.toBeUndefined();
     expect(packageJson.name).toBe(projectName);
 
-    runGeneratedCommand(projectPath, 'npm', ['run', 'build']);
+    runGeneratedCommand(projectPath, 'npm', ['run', 'build:ts']);
   }, 300000);
 
   itBunIf('scaffolds a real Elysia project', async () => {

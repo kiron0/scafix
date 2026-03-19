@@ -250,7 +250,7 @@ export function getDlxCommand(
 
     return {
       cmd: 'npx',
-      args: [pkg, ...args],
+      args: ['--yes', pkg, ...args],
     };
   }
 
@@ -263,6 +263,6 @@ export function getDlxCommand(
 
   return {
     cmd: 'npx',
-    args: [pkg, ...args],
+    args: ['--yes', pkg, ...args],
   };
 }

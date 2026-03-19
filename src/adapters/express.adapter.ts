@@ -483,7 +483,7 @@ export default router
 
   // Generate controller
   const controllerContent = `import { Request, Response } from 'express'
-import * as productService from '../business/product.js'
+import * as productService from '../../business/product.js'
 
 export const getProducts = async (req: Request, res: Response) => {
   try {

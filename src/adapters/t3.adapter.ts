@@ -41,7 +41,7 @@ export const t3Adapter: StackAdapter = {
     const customizations = await promptT3Customizations({
       yes: options.yes,
     });
-    const packageFlags = customizations.packages.flatMap((pkg: string) => ['--packages', pkg]);
+    const hasPackage = (pkg: string): boolean => customizations.packages.includes(pkg);
     const projectPath = join(process.cwd(), directory);
     let createdParentDirectories: string[] = [];
 
@@ -55,8 +55,17 @@ export const t3Adapter: StackAdapter = {
           directory,
           '--noGit',
           '--noInstall',
-          ...packageFlags,
-          ...(customizations.appRouter ? ['--appRouter'] : ['--noAppRouter']),
+          '--CI',
+          '--tailwind',
+          String(hasPackage('tailwind')),
+          '--trpc',
+          String(hasPackage('trpc')),
+          '--prisma',
+          String(hasPackage('prisma')),
+          '--nextAuth',
+          String(hasPackage('nextAuth')),
+          '--appRouter',
+          String(customizations.appRouter),
         ],
         { cwd: process.cwd(), stdio: 'inherit' }
       );

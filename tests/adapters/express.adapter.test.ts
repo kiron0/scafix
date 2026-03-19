@@ -229,6 +229,9 @@ describe.sequential('expressAdapter', () => {
       expect(controllerContent).not.toContain("import { Request, Response } from 'express'");
       expect(controllerContent).not.toContain(': Request');
       expect(controllerContent).not.toContain(': Response');
+      if (pattern === 'layered') {
+        expect(controllerContent).toContain("import * as productService from '../../business/product.js'");
+      }
       expect(dataContent).not.toContain('Map<string');
       expect(dataContent).not.toContain('Record<string, unknown>');
       expect(dataContent).not.toContain(': string');

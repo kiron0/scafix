@@ -63,7 +63,21 @@ describe.sequential('t3Adapter', () => {
 
     expect(mocks.exec).toHaveBeenCalledWith(
       'npx',
-      expect.arrayContaining(['create-t3-app@latest', 'demo-t3']),
+      expect.arrayContaining([
+        'create-t3-app@latest',
+        'demo-t3',
+        '--CI',
+        '--tailwind',
+        'true',
+        '--trpc',
+        'true',
+        '--prisma',
+        'true',
+        '--nextAuth',
+        'false',
+        '--appRouter',
+        'true',
+      ]),
       expect.objectContaining({ cwd: tempDir, stdio: 'inherit' })
     );
   });

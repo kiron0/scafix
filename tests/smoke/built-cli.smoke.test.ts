@@ -4,8 +4,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { useEphemeralPackageManagerCache } from './utils/package-manager-cache.js';
 
 const describeIf = process.env.SCAFIX_RUN_NETWORK_SMOKE === '1' ? describe : describe.skip;
+useEphemeralPackageManagerCache();
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const cliEntry = join(packageRoot, 'dist', 'index.js');
 

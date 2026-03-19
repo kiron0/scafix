@@ -5,6 +5,7 @@ import { CliExitError } from '../utils/cli-error.js';
 import { logger } from '../utils/logger.js';
 
 export interface ViteReactCustomizations {
+  framework: 'react' | 'vue';
   typescript: boolean;
   tailwind: boolean;
   tailwindVersion?: 'v3' | 'v4';
@@ -67,7 +68,7 @@ export interface ExpoCustomizations {
 }
 
 export interface RemixCustomizations {
-  template: 'remix' | 'grunge-stack' | 'blues-stack' | 'indie-stack';
+  template: 'remix';
 }
 
 export interface FastifyCustomizations {
@@ -95,6 +96,7 @@ export interface AngularCustomizations {
   style: 'css' | 'scss' | 'less';
   ssr: boolean;
   routing: boolean;
+  zard: boolean;
 }
 
 function isPromptCancelledError(error: unknown): boolean {
@@ -120,6 +122,7 @@ export async function promptViteReactCustomizations(
 ): Promise<ViteReactCustomizations> {
   if (options.yes) {
     return {
+      framework: 'react',
       typescript: true,
       tailwind: false,
       shadcn: false,
@@ -129,11 +132,22 @@ export async function promptViteReactCustomizations(
 
   try {
     const customizations: ViteReactCustomizations = {
+      framework: 'react',
       typescript: true,
       tailwind: false,
       shadcn: false,
       prettier: false,
     };
+
+    const frameworkResponse = await select({
+      message: 'Select Vite framework:',
+      options: [
+        { label: 'React', value: 'react' },
+        { label: 'Vue', value: 'vue' },
+      ],
+    });
+    customizations.framework =
+      (unwrapPromptResponse(frameworkResponse) as ViteReactCustomizations['framework']) ?? 'react';
 
     // TypeScript or JavaScript
     const tsResponse = await select({
@@ -166,7 +180,8 @@ export async function promptViteReactCustomizations(
     // Shadcn UI
     if (customizations.tailwind) {
       const shadcnResponse = await confirm({
-        message: 'Add shadcn/ui?',
+        message:
+          customizations.framework === 'vue' ? 'Add shadcn-vue?' : 'Add shadcn/ui?',
         initialValue: false,
       });
       customizations.shadcn = unwrapPromptResponse(shadcnResponse) ?? false;
@@ -706,32 +721,8 @@ export async function promptExpoCustomizations(
 export async function promptRemixCustomizations(
   options: { yes?: boolean } = {}
 ): Promise<RemixCustomizations> {
-  if (options.yes) {
-    return { template: 'remix' };
-  }
-
-  try {
-    const templateResponse = await select({
-      message: 'Select Remix template:',
-      options: [
-        { label: 'Default (Remix)', hint: 'Standard Remix starter', value: 'remix' },
-        { label: 'Grunge Stack', hint: 'AWS + DynamoDB', value: 'grunge-stack' },
-        { label: 'Blues Stack', hint: 'Deployed to Fly.io + Prisma', value: 'blues-stack' },
-        { label: 'Indie Stack', hint: 'Deployed to Fly.io + SQLite', value: 'indie-stack' },
-      ],
-    });
-
-    return {
-      template:
-        (unwrapPromptResponse(templateResponse) as RemixCustomizations['template']) ?? 'remix',
-    };
-  } catch (error) {
-    if (isPromptCancelledError(error)) {
-      abortCustomizationPrompt(error);
-    }
-
-    throw error;
-  }
+  void options;
+  return { template: 'remix' };
 }
 
 export async function promptFastifyCustomizations(
@@ -861,6 +852,7 @@ export async function promptAngularCustomizations(
       style: 'css',
       ssr: false,
       routing: true,
+      zard: false,
     };
   }
 
@@ -884,10 +876,16 @@ export async function promptAngularCustomizations(
       initialValue: true,
     });
 
+    const zardResponse = await confirm({
+      message: 'Add zard/ui?',
+      initialValue: false,
+    });
+
     return {
       style: (unwrapPromptResponse(styleResponse) as AngularCustomizations['style']) ?? 'css',
       ssr: unwrapPromptResponse(ssrResponse) ?? false,
       routing: unwrapPromptResponse(routingResponse) ?? true,
+      zard: unwrapPromptResponse(zardResponse) ?? false,
     };
   } catch (error) {
     if (isPromptCancelledError(error)) {

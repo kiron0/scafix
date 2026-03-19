@@ -43,8 +43,10 @@ describe.sequential('sveltekitAdapter', () => {
     cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(tempDir);
     mocks.exec.mockImplementation(async (_command, args, options) => {
       const projectName =
-        args[0] === 'sv' && args[1] === 'create'
-          ? (args[2] as string)
+        args[0] === '--yes' && args[1] === 'sv' && args[2] === 'create'
+          ? (args[3] as string)
+          : args[0] === 'sv' && args[1] === 'create'
+            ? (args[2] as string)
           : args[0] === 'dlx' && args[1] === 'sv' && args[2] === 'create'
             ? (args[3] as string)
             : undefined;
@@ -70,6 +72,7 @@ describe.sequential('sveltekitAdapter', () => {
   it.each([
     {
       args: [
+        '--yes',
         'sv',
         'create',
         'demo-sveltekit-npm',
@@ -103,6 +106,7 @@ describe.sequential('sveltekitAdapter', () => {
     },
     {
       args: [
+        '--yes',
         'sv',
         'create',
         'demo-sveltekit-yarn',
@@ -215,6 +219,7 @@ describe.sequential('sveltekitAdapter', () => {
     expect(mocks.exec).toHaveBeenCalledWith(
       'npx',
       [
+        '--yes',
         'sv',
         'create',
         'demo-sveltekit-demo',

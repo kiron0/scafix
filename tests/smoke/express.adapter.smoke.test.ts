@@ -4,8 +4,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { expressAdapter } from '../../src/adapters/express.adapter.js';
+import { useEphemeralPackageManagerCache } from './utils/package-manager-cache.js';
 
 const describeIf = process.env.SCAFIX_RUN_NETWORK_SMOKE === '1' ? describe : describe.skip;
+useEphemeralPackageManagerCache();
 
 function runPackageScript(projectPath: string, script: string) {
   return spawnSync('npm', ['run', script], {

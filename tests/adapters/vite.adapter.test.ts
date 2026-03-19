@@ -68,6 +68,7 @@ describe.sequential('viteReactAdapter', () => {
 
   it('uses shared customizations to select the Vite template in --yes mode', async () => {
     mocks.promptViteReactCustomizations.mockResolvedValue({
+      framework: 'react',
       prettier: false,
       shadcn: false,
       tailwind: false,
@@ -85,7 +86,7 @@ describe.sequential('viteReactAdapter', () => {
     });
     expect(mocks.exec).toHaveBeenCalledWith(
       'npm',
-      ['create', 'vite@latest', 'demo-vite', '--', '--template', 'react-ts'],
+      ['create', 'vite@latest', 'demo-vite', '--', '--template', 'react-ts', '--no-interactive'],
       expect.objectContaining({
         cwd: tempDir,
         stdio: 'inherit',
@@ -103,6 +104,7 @@ describe.sequential('viteReactAdapter', () => {
 
   it('applies JS template, tailwind v3, and prettier when requested', async () => {
     mocks.promptViteReactCustomizations.mockResolvedValue({
+      framework: 'react',
       prettier: true,
       shadcn: false,
       tailwind: true,
@@ -119,7 +121,7 @@ describe.sequential('viteReactAdapter', () => {
 
     expect(mocks.exec).toHaveBeenCalledWith(
       'pnpm',
-      ['create', 'vite', 'demo-vite-js', '--template', 'react'],
+      ['create', 'vite', 'demo-vite-js', '--template', 'react', '--no-interactive'],
       expect.objectContaining({
         cwd: tempDir,
         stdio: 'inherit',
@@ -167,6 +169,7 @@ describe.sequential('viteReactAdapter', () => {
 
   it('uses the selected package manager to run shadcn for bun projects', async () => {
     mocks.promptViteReactCustomizations.mockResolvedValue({
+      framework: 'react',
       prettier: false,
       shadcn: true,
       tailwind: true,
@@ -207,8 +210,112 @@ describe.sequential('viteReactAdapter', () => {
     );
   });
 
+  it('uses the Vue template and initialises shadcn-vue when requested', async () => {
+    mocks.promptViteReactCustomizations.mockResolvedValue({
+      framework: 'vue',
+      prettier: false,
+      shadcn: true,
+      tailwind: true,
+      tailwindVersion: 'v4',
+      typescript: true,
+    });
+    mocks.exec.mockImplementation(async (_command, args, options) => {
+      const projectName = args[2] as string | undefined;
+      if (!projectName || options?.cwd !== tempDir) {
+        return;
+      }
+
+      const projectPath = join(tempDir, projectName);
+      await mkdir(join(projectPath, 'src'), { recursive: true });
+      await writeFile(join(projectPath, 'src', 'style.css'), 'body {}\n');
+      await writeFile(
+        join(projectPath, 'vite.config.ts'),
+        "import { defineConfig } from 'vite'\nimport vue from '@vitejs/plugin-vue'\nexport default defineConfig({\n  plugins: [vue()],\n})\n"
+      );
+      await writeFile(
+        join(projectPath, 'tsconfig.json'),
+        `${JSON.stringify({ compilerOptions: {}, references: [{ path: './tsconfig.app.json' }] }, null, 2)}\n`
+      );
+      await writeFile(
+        join(projectPath, 'tsconfig.app.json'),
+        `{
+  "compilerOptions": {
+    /* Vite writes JSONC here. */
+  },
+}\n`
+      );
+      await writeFile(
+        join(projectPath, 'package.json'),
+        `${JSON.stringify({ name: projectName }, null, 2)}\n`
+      );
+    });
+
+    await viteReactAdapter.create({
+      directory: 'demo-vite-vue',
+      packageManager: 'npm',
+      projectName: 'demo-vite-vue',
+      yes: true,
+    });
+
+    const projectPath = join(tempDir, 'demo-vite-vue');
+    const viteConfig = await readFile(join(projectPath, 'vite.config.ts'), 'utf8');
+    const tsconfig = JSON.parse(await readFile(join(projectPath, 'tsconfig.json'), 'utf8')) as {
+      compilerOptions: { baseUrl?: string; paths?: Record<string, string[]> };
+    };
+    const tsconfigApp = JSON.parse(
+      await readFile(join(projectPath, 'tsconfig.app.json'), 'utf8')
+    ) as {
+      compilerOptions: { baseUrl?: string; paths?: Record<string, string[]> };
+    };
+
+    expect(mocks.exec).toHaveBeenCalledWith(
+      'npm',
+      ['create', 'vite@latest', 'demo-vite-vue', '--', '--template', 'vue-ts', '--no-interactive'],
+      expect.objectContaining({
+        cwd: tempDir,
+        stdio: 'inherit',
+      })
+    );
+    expect(mocks.exec).toHaveBeenCalledWith(
+      'npm',
+      ['install', '--save-dev', '@types/node'],
+      expect.objectContaining({
+        cwd: projectPath,
+        stdio: 'pipe',
+      })
+    );
+    expect(mocks.exec).toHaveBeenCalledWith(
+      'npx',
+      [
+        '--yes',
+        'shadcn-vue@latest',
+        'init',
+        '--defaults',
+        '--base-color',
+        'neutral',
+        '--yes',
+        '--cwd',
+        projectPath,
+      ],
+      expect.objectContaining({
+        cwd: projectPath,
+        stdio: 'inherit',
+      })
+    );
+    expect(viteConfig).toContain("import { fileURLToPath, URL } from 'node:url';");
+    expect(viteConfig).toContain("fileURLToPath(new URL('./src', import.meta.url))");
+    expect(tsconfig.compilerOptions.baseUrl).toBe('.');
+    expect(tsconfig.compilerOptions.paths?.['@/*']).toEqual(['./src/*']);
+    expect(tsconfigApp.compilerOptions.baseUrl).toBe('.');
+    expect(tsconfigApp.compilerOptions.paths?.['@/*']).toEqual(['./src/*']);
+    expect(await readFile(join(projectPath, 'src', 'style.css'), 'utf8')).toContain(
+      '@import "tailwindcss";'
+    );
+  });
+
   it('reconciles package.json name from the requested project name when directory differs', async () => {
     mocks.promptViteReactCustomizations.mockResolvedValue({
+      framework: 'react',
       prettier: false,
       shadcn: false,
       tailwind: false,
@@ -231,6 +338,7 @@ describe.sequential('viteReactAdapter', () => {
 
   it('cleans up the generated project directory when shadcn setup fails', async () => {
     mocks.promptViteReactCustomizations.mockResolvedValue({
+      framework: 'react',
       prettier: false,
       shadcn: true,
       tailwind: true,
@@ -251,7 +359,7 @@ describe.sequential('viteReactAdapter', () => {
         return;
       }
 
-      if (args[0] === 'shadcn@latest') {
+      if (args.includes('shadcn@latest')) {
         throw new Error('shadcn init failed');
       }
     });
@@ -269,22 +377,22 @@ describe.sequential('viteReactAdapter', () => {
 
   it.each([
     {
-      args: ['create', 'vite@latest', 'demo-vite-npm', '--', '--template', 'react-ts'],
+      args: ['create', 'vite@latest', 'demo-vite-npm', '--', '--template', 'react-ts', '--no-interactive'],
       cmd: 'npm',
       packageManager: 'npm',
     },
     {
-      args: ['create', 'vite', 'demo-vite-pnpm', '--template', 'react-ts'],
+      args: ['create', 'vite', 'demo-vite-pnpm', '--template', 'react-ts', '--no-interactive'],
       cmd: 'pnpm',
       packageManager: 'pnpm',
     },
     {
-      args: ['create', 'vite', 'demo-vite-yarn', '--template', 'react-ts'],
+      args: ['create', 'vite', 'demo-vite-yarn', '--template', 'react-ts', '--no-interactive'],
       cmd: 'yarn',
       packageManager: 'yarn',
     },
     {
-      args: ['create', 'vite', 'demo-vite-bun', '--template', 'react-ts'],
+      args: ['create', 'vite', 'demo-vite-bun', '--template', 'react-ts', '--no-interactive'],
       cmd: 'bun',
       packageManager: 'bun',
     },
@@ -292,6 +400,7 @@ describe.sequential('viteReactAdapter', () => {
     'covers the Vite external CLI command mapping for $packageManager',
     async ({ args, cmd, packageManager }) => {
       mocks.promptViteReactCustomizations.mockResolvedValue({
+        framework: 'react',
         prettier: false,
         shadcn: false,
         tailwind: false,

@@ -51,7 +51,7 @@ describe.sequential('remixAdapter', () => {
     await rm(tempDir, { force: true, recursive: true });
   });
 
-  it('calls create-remix via npx for npm', async () => {
+  it('calls create-react-router via a dlx command for npm', async () => {
     await remixAdapter.create({
       packageManager: 'npm',
       projectName: 'demo-remix',
@@ -60,7 +60,7 @@ describe.sequential('remixAdapter', () => {
 
     expect(mocks.exec).toHaveBeenCalledWith(
       'npx',
-      expect.arrayContaining(['create-remix@latest', 'demo-remix']),
+      expect.arrayContaining(['create-react-router@latest', 'demo-remix']),
       expect.objectContaining({ cwd: tempDir, stdio: 'inherit' })
     );
   });

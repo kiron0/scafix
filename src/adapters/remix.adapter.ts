@@ -4,6 +4,7 @@ import type { CreateOptions, StackAdapter } from '../types/stack.js';
 import { CliExitError } from '../utils/cli-error.js';
 import { exec } from '../utils/exec.js';
 import { logger } from '../utils/logger.js';
+import { getDlxCommand } from '../utils/package-manager.js';
 import { validateDirectory, validateProjectName } from '../utils/validate.js';
 import {
   cleanupFailedScaffold,
@@ -14,7 +15,8 @@ import {
 export const remixAdapter: StackAdapter = {
   id: 'remix',
   name: 'Remix',
-  description: 'Scaffold a Remix project via the official create-remix CLI',
+  description:
+    'Scaffold a Remix-style React Router project via the official create-react-router CLI',
   category: 'fullstack',
 
   async create(options: CreateOptions): Promise<void> {
@@ -34,77 +36,30 @@ export const remixAdapter: StackAdapter = {
       throw new CliExitError(1);
     }
 
-    logger.info(`Launching Remix's official CLI for: ${projectName}`);
+    logger.info(`Launching React Router's official CLI for: ${projectName}`);
     logger.info('');
 
-    const customizations = await promptRemixCustomizations({
+    await promptRemixCustomizations({
       yes: options.yes,
     });
     const yesFlag = options.yes ? ['--yes'] : [];
-    const templateArgs =
-      customizations.template !== 'remix' ? ['--template', customizations.template] : [];
-
-    const pmCommands: Record<string, { cmd: string; args: string[] }> = {
-      npm: {
-        cmd: 'npx',
-        args: [
-          '--yes',
-          'create-remix@latest',
-          directory,
-          '--no-git-init',
-          '--no-install',
-          '--package-manager',
-          packageManager,
-          ...templateArgs,
-          ...yesFlag,
-        ],
-      },
-      pnpm: {
-        cmd: 'pnpm',
-        args: [
-          'create',
-          'remix@latest',
-          directory,
-          '--no-git-init',
-          '--no-install',
-          '--package-manager',
-          packageManager,
-          ...templateArgs,
-          ...yesFlag,
-        ],
-      },
-      yarn: {
-        cmd: 'yarn',
-        args: [
-          'create',
-          'remix',
-          directory,
-          '--no-git-init',
-          '--no-install',
-          '--package-manager',
-          packageManager,
-          ...templateArgs,
-          ...yesFlag,
-        ],
-      },
-      bun: {
-        cmd: 'bun',
-        args: [
-          'create',
-          'remix@latest',
-          directory,
-          '--no-git-init',
-          '--no-install',
-          '--package-manager',
-          packageManager,
-          ...templateArgs,
-          ...yesFlag,
-        ],
-      },
-    };
 
     const projectPath = join(process.cwd(), directory);
-    const { cmd, args } = pmCommands[packageManager] ?? pmCommands.npm;
+    const { cmd, args } = getDlxCommand(
+      packageManager,
+      'create-react-router@latest',
+      [
+        directory,
+        '--no-git-init',
+        '--no-install',
+        '--package-manager',
+        packageManager,
+        ...yesFlag,
+      ],
+      {
+        directory: process.cwd(),
+      }
+    );
     let createdParentDirectories: string[] = [];
 
     try {

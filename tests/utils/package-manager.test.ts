@@ -105,7 +105,7 @@ describe('getDlxCommand', () => {
   it('returns npx for npm', () => {
     expect(getDlxCommand('npm', 'shadcn@latest', ['init'])).toEqual({
       cmd: 'npx',
-      args: ['shadcn@latest', 'init'],
+      args: ['--yes', 'shadcn@latest', 'init'],
     });
   });
 
@@ -119,7 +119,7 @@ describe('getDlxCommand', () => {
   it('returns npx for yarn classic to match classic node_modules workflows', () => {
     expect(getDlxCommand('yarn', 'shadcn@latest', ['init'], { yarnFlavor: 'classic' })).toEqual({
       cmd: 'npx',
-      args: ['shadcn@latest', 'init'],
+      args: ['--yes', 'shadcn@latest', 'init'],
     });
   });
 

@@ -11,9 +11,11 @@ import { honoAdapter } from '../../src/adapters/hono.adapter.js';
 import { sveltekitAdapter } from '../../src/adapters/sveltekit.adapter.js';
 import { viteReactAdapter } from '../../src/adapters/vite.adapter.js';
 import type { PackageManager } from '../../src/utils/package-manager.js';
+import { useEphemeralPackageManagerCache } from './utils/package-manager-cache.js';
 import { runGeneratedCommand } from '../utils/scaffold.js';
 
 const describeIf = process.env.SCAFIX_RUN_NETWORK_SMOKE === '1' ? describe : describe.skip;
+useEphemeralPackageManagerCache();
 
 function isCommandAvailable(command: string): boolean {
   const lookupCommand = process.platform === 'win32' ? 'where' : 'which';
@@ -364,6 +366,43 @@ describeIf.sequential('external CLI smoke', () => {
 
       const [lintCommand, lintArgs] = getScriptCommand(packageManager, 'lint');
       runGeneratedCommand(projectPath, lintCommand, lintArgs);
+
+      const [buildCommand, buildArgs] = getScriptCommand(packageManager, 'build');
+      runGeneratedCommand(projectPath, buildCommand, buildArgs);
+
+      await expect(access(join(projectPath, 'dist', 'index.html'))).resolves.toBeUndefined();
+    },
+    300000
+  );
+
+  it.each(availablePackageManagers)(
+    'scaffolds a real Vite Vue project with shadcn-vue through the official CLI with %s',
+    async (packageManager) => {
+      const projectName = `smoke-vite-vue-app-${packageManager}`;
+      await viteReactAdapter.create({
+        directory: projectName,
+        framework: 'vue',
+        packageManager,
+        projectName,
+        shadcnVue: true,
+        tailwind: true,
+        tailwindVersion: 'v4',
+        typescript: true,
+        yes: true,
+      });
+
+      const projectPath = join(tempDir, projectName);
+      await expect(access(join(projectPath, 'package.json'))).resolves.toBeUndefined();
+      await expect(access(join(projectPath, 'components.json'))).resolves.toBeUndefined();
+      await expect(access(join(projectPath, 'src', 'main.ts'))).resolves.toBeUndefined();
+
+      const packageJson = JSON.parse(await readFile(join(projectPath, 'package.json'), 'utf8'));
+      expect(packageJson.name).toBe(projectName);
+      expect(packageJson.scripts?.build).toBeTruthy();
+
+      const tsconfigApp = JSON.parse(await readFile(join(projectPath, 'tsconfig.app.json'), 'utf8'));
+      expect(tsconfigApp.compilerOptions?.baseUrl).toBe('.');
+      expect(tsconfigApp.compilerOptions?.paths?.['@/*']).toEqual(['./src/*']);
 
       const [buildCommand, buildArgs] = getScriptCommand(packageManager, 'build');
       runGeneratedCommand(projectPath, buildCommand, buildArgs);

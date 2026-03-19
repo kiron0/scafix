@@ -4,9 +4,11 @@ import { join } from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { npmPackageAdapter } from '../../src/adapters/npm.adapter.js';
 import { detectPackageManager } from '../../src/utils/package-manager.js';
+import { useEphemeralPackageManagerCache } from './utils/package-manager-cache.js';
 import { runGeneratedCommand } from '../utils/scaffold.js';
 
 const describeIf = process.env.SCAFIX_RUN_NETWORK_SMOKE === '1' ? describe : describe.skip;
+useEphemeralPackageManagerCache();
 const requestedPackageManagers = new Set(
   (process.env.SCAFIX_SMOKE_PACKAGE_MANAGERS ?? '')
     .split(',')

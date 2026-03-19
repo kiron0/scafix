@@ -73,13 +73,40 @@ export function runGeneratedCommand(
   args: string[],
   extraEnv: NodeJS.ProcessEnv = {}
 ): string {
-  return execFileSync(command, args, {
-    cwd: projectPath,
-    encoding: 'utf8',
-    env: {
-      ...process.env,
-      ...extraEnv,
-    },
-    stdio: 'pipe',
-  });
+  try {
+    return execFileSync(command, args, {
+      cwd: projectPath,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        ...extraEnv,
+      },
+      stdio: 'pipe',
+    });
+  } catch (error) {
+    const commandError = error as Error & {
+      code?: number | string;
+      status?: number | null;
+      signal?: string | null;
+      stderr?: string | Buffer;
+      stdout?: string | Buffer;
+      output?: Array<string | Buffer | null>;
+    };
+
+    throw new Error(
+      JSON.stringify(
+        {
+          args,
+          code: commandError.code,
+          command,
+          signal: commandError.signal,
+          status: commandError.status,
+          stderr: commandError.stderr?.toString(),
+          stdout: commandError.stdout?.toString(),
+        },
+        null,
+        2
+      )
+    );
+  }
 }
