@@ -26,6 +26,15 @@ function requiresNpmSafeProjectName(stackId: string): boolean {
   return stackId === 'npm' || stackId === 'express';
 }
 
+function ensureInteractiveTty(): void {
+  if (!process.stdin.isTTY) {
+    logger.error(
+      'Interactive prompts require a TTY. Re-run in a terminal or provide the required options explicitly.'
+    );
+    throw new CliExitError(1);
+  }
+}
+
 export async function createCommand(
   stackId: string | undefined,
   options: CliOptions = {}
@@ -48,6 +57,7 @@ export async function createCommand(
     // Prompt for project name if not provided
     let projectName = (options.name || options.projectName) as string | undefined;
     if (!projectName) {
+      ensureInteractiveTty();
       projectName = (await promptProjectName({
         yes: options.yes,
         default: 'my-project',
@@ -70,6 +80,7 @@ export async function createCommand(
     const defaultDirectory = getDefaultDirectoryName(projectName);
     let directory = hasExplicitDirectory ? (options.directory as string) : defaultDirectory;
     if (!hasExplicitDirectory && !options.yes) {
+      ensureInteractiveTty();
       const dirResponse = await promptDirectory(defaultDirectory, {
         yes: options.yes,
       });
@@ -111,6 +122,7 @@ export async function createCommand(
         logger.debug(`Detected package manager: ${packageManager}`);
       } else if (!options.yes) {
         // Only prompt if not detected and not in --yes mode
+        ensureInteractiveTty();
         const pmResponse = await promptPackageManager({ yes: options.yes });
         if (pmResponse) {
           packageManager = pmResponse;
@@ -124,6 +136,7 @@ export async function createCommand(
     if (options.git !== undefined) {
       git = Boolean(options.git);
     } else if (!options.yes) {
+      ensureInteractiveTty();
       git = await promptGit({ yes: options.yes });
     }
 

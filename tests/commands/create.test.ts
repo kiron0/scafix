@@ -66,9 +66,17 @@ vi.mock('../../src/utils/validate.js', () => ({
 
 import { createCommand } from '../../src/commands/create.js';
 
+function setStdinTty(value: boolean): void {
+  Object.defineProperty(process.stdin, 'isTTY', {
+    configurable: true,
+    value,
+  });
+}
+
 describe('createCommand', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setStdinTty(true);
     mocks.getAdapterById.mockReturnValue({
       id: 'vite',
       name: 'Vite',
@@ -169,6 +177,42 @@ describe('createCommand', () => {
     ).rejects.toMatchObject({ exitCode: 130 });
 
     expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it('fails fast when interactive prompts would be needed without a TTY', async () => {
+    setStdinTty(false);
+
+    await expect(createCommand('vite', {})).rejects.toBeInstanceOf(CliExitError);
+
+    expect(mocks.promptProjectName).not.toHaveBeenCalled();
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'Interactive prompts require a TTY. Re-run in a terminal or provide the required options explicitly.'
+    );
+  });
+
+  it('allows fully explicit create usage without a TTY', async () => {
+    setStdinTty(false);
+
+    await createCommand('vite', {
+      directory: 'demo-app',
+      git: false,
+      name: 'demo-app',
+      packageManager: 'npm',
+    });
+
+    expect(mocks.promptProjectName).not.toHaveBeenCalled();
+    expect(mocks.promptDirectory).not.toHaveBeenCalled();
+    expect(mocks.promptPackageManager).not.toHaveBeenCalled();
+    expect(mocks.promptGit).not.toHaveBeenCalled();
+    expect(mocks.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        directory: 'demo-app',
+        git: false,
+        packageManager: 'npm',
+        projectName: 'demo-app',
+      })
+    );
   });
 
   it('rejects unsupported package managers before adapter execution', async () => {

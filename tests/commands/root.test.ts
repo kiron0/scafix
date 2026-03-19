@@ -29,9 +29,17 @@ vi.mock('../../src/utils/logger.js', () => ({
 
 import { rootCommand } from '../../src/commands/root.js';
 
+function setStdinTty(value: boolean): void {
+  Object.defineProperty(process.stdin, 'isTTY', {
+    configurable: true,
+    value,
+  });
+}
+
 describe('rootCommand', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setStdinTty(true);
   });
 
   it('rejects non-interactive root usage without an explicit stack', async () => {
@@ -39,6 +47,17 @@ describe('rootCommand', () => {
     expect(mocks.initCommand).not.toHaveBeenCalled();
     expect(mocks.logger.error).toHaveBeenCalledWith(
       'Non-interactive usage requires an explicit stack: use `scafix create <stack> --yes`.'
+    );
+  });
+
+  it('fails fast when interactive root usage runs without a TTY', async () => {
+    setStdinTty(false);
+
+    await expect(rootCommand({})).rejects.toBeInstanceOf(CliExitError);
+
+    expect(mocks.initCommand).not.toHaveBeenCalled();
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'Interactive root usage requires a TTY. Re-run in a terminal or use `scafix create <stack> --yes`.'
     );
   });
 });

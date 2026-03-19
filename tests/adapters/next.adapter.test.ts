@@ -459,4 +459,28 @@ describe.sequential('nextAdapter', () => {
       expect.anything()
     );
   });
+
+  it('cleans up any parent directories it created when nested create-next-app scaffolding fails early', async () => {
+    mocks.promptNextCustomizations.mockResolvedValue({
+      appRouter: true,
+      eslint: true,
+      prettier: false,
+      shadcn: false,
+      srcDir: true,
+      tailwind: true,
+      typescript: true,
+    });
+    mocks.exec.mockRejectedValue(new Error('create-next-app failed'));
+
+    await expect(
+      nextAdapter.create({
+        directory: 'apps/demo-next-failed',
+        packageManager: 'npm',
+        projectName: 'demo-next-failed',
+      })
+    ).rejects.toThrow('create-next-app failed');
+
+    await expect(access(join(tempDir, 'apps'))).rejects.toThrow();
+    await expect(access(join(tempDir, 'apps', 'demo-next-failed'))).rejects.toThrow();
+  });
 });

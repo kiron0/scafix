@@ -27,6 +27,15 @@ function requiresNpmSafeProjectName(stackId: string): boolean {
   return stackId === 'npm' || stackId === 'express';
 }
 
+function ensureInteractiveTty(): void {
+  if (!process.stdin.isTTY) {
+    logger.error(
+      'Interactive init usage requires a TTY. Re-run in a terminal or use `scafix create <stack> --yes`.'
+    );
+    throw new CliExitError(1);
+  }
+}
+
 export async function initCommand(options: CliOptions = {}): Promise<void> {
   try {
     if (options.yes) {
@@ -35,6 +44,8 @@ export async function initCommand(options: CliOptions = {}): Promise<void> {
       );
       throw new CliExitError(1);
     }
+
+    ensureInteractiveTty();
 
     const adapter = await selectStack(adapters);
     if (!adapter) {

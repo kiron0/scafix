@@ -14,6 +14,13 @@ export async function rootCommand(options: CliOptions = {}): Promise<void> {
     throw new CliExitError(1);
   }
 
+  if (!process.stdin.isTTY) {
+    logger.error(
+      'Interactive root usage requires a TTY. Re-run in a terminal or use `scafix create <stack> --yes`.'
+    );
+    throw new CliExitError(1);
+  }
+
   if (process.stdin.isTTY) {
     p.intro(chalk.cyan.bold(`${APP_CONFIG.displayName} CLI v${APP_CONFIG.version}`));
     p.note(APP_CONFIG.description, 'About');

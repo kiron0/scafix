@@ -75,9 +75,17 @@ vi.mock('../../src/utils/validate.js', () => ({
 
 import { initCommand } from '../../src/commands/init.js';
 
+function setStdinTty(value: boolean): void {
+  Object.defineProperty(process.stdin, 'isTTY', {
+    configurable: true,
+    value,
+  });
+}
+
 describe('initCommand', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setStdinTty(true);
     mocks.detectPackageManagerFromCwd.mockReturnValue(null);
     mocks.selectStack.mockResolvedValue(mocks.adapters[0]);
     mocks.promptDirectory.mockResolvedValue('my-project');
@@ -101,6 +109,18 @@ describe('initCommand', () => {
     expect(mocks.adapters[0].create).not.toHaveBeenCalled();
     expect(mocks.logger.error).toHaveBeenCalledWith(
       'Non-interactive usage requires an explicit stack: use `scafix create <stack> --yes`.'
+    );
+  });
+
+  it('fails fast when interactive init usage runs without a TTY', async () => {
+    setStdinTty(false);
+
+    await expect(initCommand({})).rejects.toBeInstanceOf(CliExitError);
+
+    expect(mocks.selectStack).not.toHaveBeenCalled();
+    expect(mocks.adapters[0].create).not.toHaveBeenCalled();
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'Interactive init usage requires a TTY. Re-run in a terminal or use `scafix create <stack> --yes`.'
     );
   });
 

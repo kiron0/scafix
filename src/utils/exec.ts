@@ -20,7 +20,7 @@ export async function exec(
     await execa(command, args, {
       cwd,
       stdio,
-      env: { ...env, ...process.env },
+      env: { ...process.env, ...env },
     });
   } catch (error) {
     logger.error(

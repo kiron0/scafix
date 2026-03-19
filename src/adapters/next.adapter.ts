@@ -1,5 +1,6 @@
 import { spinner } from '@clack/prompts';
-import { mkdir, readFile, rm, writeFile } from 'fs/promises';
+import { existsSync } from 'fs';
+import { mkdir, readFile, rm, rmdir, writeFile } from 'fs/promises';
 import { dirname, join } from 'path';
 import { promptNextCustomizations } from '../prompts/customizations.js';
 import type { CreateOptions, StackAdapter } from '../types/stack.js';
@@ -61,6 +62,33 @@ async function reconcileGeneratedPackageJsonName(
     packageJson.name = preferredName;
     await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
   }
+}
+
+async function createMissingParentDirectories(projectPath: string): Promise<string[]> {
+  const cwd = process.cwd();
+  const projectParentPath = dirname(projectPath);
+
+  if (projectParentPath === cwd) {
+    return [];
+  }
+
+  const relativeParentPath = projectParentPath.slice(cwd.length).replace(/^[/\\]+/, '');
+  if (!relativeParentPath) {
+    return [];
+  }
+
+  const createdDirectories: string[] = [];
+  let currentPath = cwd;
+
+  for (const segment of relativeParentPath.split(/[\\/]+/).filter((value) => value.length > 0)) {
+    currentPath = join(currentPath, segment);
+    if (!existsSync(currentPath)) {
+      await mkdir(currentPath);
+      createdDirectories.push(currentPath);
+    }
+  }
+
+  return createdDirectories;
 }
 
 export const nextAdapter: StackAdapter = {
@@ -178,9 +206,10 @@ export const nextAdapter: StackAdapter = {
 
     const projectPath = join(process.cwd(), directory);
     const { cmd, args } = pmCommands[packageManager] ?? pmCommands.npm;
+    let createdParentDirectories: string[] = [];
 
     try {
-      await mkdir(dirname(projectPath), { recursive: true });
+      createdParentDirectories = await createMissingParentDirectories(projectPath);
       await exec(cmd, args, { cwd: process.cwd(), stdio: 'inherit' });
       await reconcileGeneratedPackageJsonName(projectPath, projectName, directory);
 
@@ -216,6 +245,13 @@ export const nextAdapter: StackAdapter = {
       logger.info(`  ${packageManager === 'npm' ? 'npm run dev' : `${packageManager} run dev`}`);
     } catch (error) {
       await rm(projectPath, { force: true, recursive: true });
+      for (const parentDirectory of createdParentDirectories.reverse()) {
+        try {
+          await rmdir(parentDirectory);
+        } catch {
+          // Leave non-empty parent directories intact.
+        }
+      }
       throw error;
     }
   },

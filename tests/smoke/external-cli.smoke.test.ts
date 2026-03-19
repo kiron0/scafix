@@ -71,23 +71,30 @@ describeIf.sequential('external CLI smoke', () => {
     300000
   );
 
-  it('keeps Vite package metadata tied to the requested project name when scaffolding into a custom directory', async () => {
-    await viteReactAdapter.create({
-      directory: 'apps/marketing-web',
-      packageManager: 'npm',
-      projectName: 'Marketing Site',
-      yes: true,
-    });
+  it.each(availablePackageManagers)(
+    'keeps Vite package metadata tied to the requested project name in a custom directory with %s',
+    async (packageManager) => {
+      await viteReactAdapter.create({
+        directory: `apps/marketing-web-${packageManager}`,
+        packageManager,
+        projectName: `Marketing Site ${packageManager}`,
+        yes: true,
+      });
 
-    const projectPath = join(tempDir, 'apps', 'marketing-web');
-    const packageJson = JSON.parse(await readFile(join(projectPath, 'package.json'), 'utf8'));
-    expect(packageJson.name).toBe('marketing-site');
+      const projectPath = join(tempDir, 'apps', `marketing-web-${packageManager}`);
+      const packageJson = JSON.parse(await readFile(join(projectPath, 'package.json'), 'utf8'));
+      expect(packageJson.name).toBe(`marketing-site-${packageManager}`);
 
-    runGeneratedCommand(projectPath, 'npm', ['run', 'lint']);
-    runGeneratedCommand(projectPath, 'npm', ['run', 'build']);
+      const [lintCommand, lintArgs] = getScriptCommand(packageManager, 'lint');
+      runGeneratedCommand(projectPath, lintCommand, lintArgs);
 
-    await expect(access(join(projectPath, 'dist', 'index.html'))).resolves.toBeUndefined();
-  }, 300000);
+      const [buildCommand, buildArgs] = getScriptCommand(packageManager, 'build');
+      runGeneratedCommand(projectPath, buildCommand, buildArgs);
+
+      await expect(access(join(projectPath, 'dist', 'index.html'))).resolves.toBeUndefined();
+    },
+    300000
+  );
 
   it.each(availablePackageManagers)(
     'scaffolds a real Next.js project through the official CLI with %s',
@@ -123,26 +130,33 @@ describeIf.sequential('external CLI smoke', () => {
     300000
   );
 
-  it('keeps Next.js package metadata tied to the requested project name when scaffolding into a custom directory', async () => {
-    await nextAdapter.create({
-      directory: 'apps/marketing-web',
-      packageManager: 'npm',
-      projectName: 'Marketing Site',
-      yes: true,
-    });
+  it.each(availablePackageManagers)(
+    'keeps Next.js package metadata tied to the requested project name in a custom directory with %s',
+    async (packageManager) => {
+      await nextAdapter.create({
+        directory: `apps/marketing-web-${packageManager}`,
+        packageManager,
+        projectName: `Marketing Site ${packageManager}`,
+        yes: true,
+      });
 
-    const projectPath = join(tempDir, 'apps', 'marketing-web');
-    await expect(access(join(projectPath, '.git'))).rejects.toThrow();
+      const projectPath = join(tempDir, 'apps', `marketing-web-${packageManager}`);
+      await expect(access(join(projectPath, '.git'))).rejects.toThrow();
 
-    const packageJson = JSON.parse(await readFile(join(projectPath, 'package.json'), 'utf8'));
-    expect(packageJson.name).toBe('marketing-site');
+      const packageJson = JSON.parse(await readFile(join(projectPath, 'package.json'), 'utf8'));
+      expect(packageJson.name).toBe(`marketing-site-${packageManager}`);
 
-    runGeneratedCommand(projectPath, 'npm', ['run', 'lint']);
-    runGeneratedCommand(projectPath, 'npm', ['run', 'build'], {
-      CI: '1',
-      NEXT_TELEMETRY_DISABLED: '1',
-    });
+      const [lintCommand, lintArgs] = getScriptCommand(packageManager, 'lint');
+      runGeneratedCommand(projectPath, lintCommand, lintArgs);
 
-    await expect(access(join(projectPath, '.next', 'BUILD_ID'))).resolves.toBeUndefined();
-  }, 300000);
+      const [buildCommand, buildArgs] = getScriptCommand(packageManager, 'build');
+      runGeneratedCommand(projectPath, buildCommand, buildArgs, {
+        CI: '1',
+        NEXT_TELEMETRY_DISABLED: '1',
+      });
+
+      await expect(access(join(projectPath, '.next', 'BUILD_ID'))).resolves.toBeUndefined();
+    },
+    300000
+  );
 });
