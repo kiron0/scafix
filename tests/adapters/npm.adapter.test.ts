@@ -1,4 +1,4 @@
-import { access, mkdtemp, readFile, rm } from 'fs/promises';
+import { access, mkdtemp, readFile, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -136,6 +136,68 @@ describe.sequential('npmPackageAdapter', () => {
     expect(infoMessages).toContain('  bun run test');
     expect(infoMessages).toContain('  bun publish');
     expect(infoMessages).not.toContain('  bun install');
+  });
+
+  it('uses yarn berry publish guidance when the workspace is configured for yarn berry', async () => {
+    mocks.promptNpmPackageCustomizations.mockResolvedValue({
+      typescript: true,
+      buildTool: 'tsup',
+      eslint: false,
+      prettier: false,
+      testFramework: 'none',
+    });
+    await writeFile(join(tempDir, 'package.json'), JSON.stringify({ packageManager: 'yarn@4.7.0' }));
+
+    await npmPackageAdapter.create({
+      directory: 'demo-yarn-berry',
+      packageManager: 'yarn',
+      projectName: 'demo-yarn-berry',
+      yes: true,
+    });
+
+    const projectPath = join(tempDir, 'demo-yarn-berry');
+    const generatedReadme = await readFile(join(projectPath, 'README.md'), 'utf8');
+    const infoMessages = mocks.logger.info.mock.calls.map(([message]) => message);
+
+    expect(generatedReadme).toContain('yarn npm publish');
+    expect(infoMessages).toContain('  yarn npm publish');
+  });
+
+  it('applies explicit customization overrides on top of prompt defaults', async () => {
+    mocks.promptNpmPackageCustomizations.mockResolvedValue({
+      typescript: true,
+      buildTool: 'tsup',
+      eslint: true,
+      prettier: false,
+      testFramework: 'none',
+    });
+
+    await npmPackageAdapter.create({
+      directory: 'demo-overrides',
+      packageManager: 'npm',
+      projectName: 'demo-overrides',
+      typescript: false,
+      eslint: false,
+      testFramework: 'jest',
+      yes: true,
+    });
+
+    const projectPath = join(tempDir, 'demo-overrides');
+    const generatedPackageJson = JSON.parse(
+      await readFile(join(projectPath, 'package.json'), 'utf8')
+    );
+
+    expect(generatedPackageJson.main).toBe('src/index.js');
+    expect(generatedPackageJson.scripts.test).toContain('node --experimental-vm-modules');
+    expect(generatedPackageJson.scripts.lint).toBeUndefined();
+    expect(mocks.exec).toHaveBeenCalledWith(
+      'npm',
+      ['install', '--save-dev', 'jest'],
+      expect.objectContaining({
+        cwd: projectPath,
+        stdio: 'inherit',
+      })
+    );
   });
 
   it('generates ESM-friendly JavaScript Jest tests', async () => {

@@ -281,4 +281,18 @@ describe('createCommand', () => {
     expect(mocks.create).not.toHaveBeenCalled();
     expect(mocks.logger.error).toHaveBeenCalledWith('Error: prompt renderer crashed');
   });
+
+  it('rejects non-npm project names with leading whitespace before adapter execution', async () => {
+    mocks.validateProjectName.mockReturnValue(false);
+
+    await expect(
+      createCommand('vite', {
+        name: ' demo-app',
+        yes: true,
+      })
+    ).rejects.toBeInstanceOf(CliExitError);
+
+    expect(mocks.validateProjectName).toHaveBeenCalledWith(' demo-app');
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
 });

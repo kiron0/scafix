@@ -66,3 +66,20 @@ export function getPackedFileNames(projectPath: string, cachePath: string): stri
 
   return (packSummary?.files ?? []).map((file) => file.path);
 }
+
+export function runGeneratedCommand(
+  projectPath: string,
+  command: string,
+  args: string[],
+  extraEnv: NodeJS.ProcessEnv = {}
+): string {
+  return execFileSync(command, args, {
+    cwd: projectPath,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      ...extraEnv,
+    },
+    stdio: 'pipe',
+  });
+}

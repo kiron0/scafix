@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   getDefaultDirectoryName,
+  getPreferredPackageJsonName,
   validateDirectory,
   validateNpmPackageName,
   validateProjectName,
@@ -46,6 +47,11 @@ describe('validateProjectName', () => {
 
   it('returns false for names ending in a dot or space', () => {
     expect(validateProjectName('my-project.')).toBe(false);
+    expect(validateProjectName('my-project ')).toBe(false);
+  });
+
+  it('returns false for names with leading or trailing whitespace', () => {
+    expect(validateProjectName(' my-project')).toBe(false);
     expect(validateProjectName('my-project ')).toBe(false);
   });
 });
@@ -144,5 +150,19 @@ describe('getDefaultDirectoryName', () => {
 
   it('returns the original name for unscoped names', () => {
     expect(getDefaultDirectoryName('my-package')).toBe('my-package');
+  });
+});
+
+describe('getPreferredPackageJsonName', () => {
+  it('prefers an npm-safe project name over the directory leaf', () => {
+    expect(getPreferredPackageJsonName('marketing-site', 'apps/web')).toBe('marketing-site');
+  });
+
+  it('normalizes a non-npm-safe project name before falling back to the directory', () => {
+    expect(getPreferredPackageJsonName('Marketing Site', 'apps/web')).toBe('marketing-site');
+  });
+
+  it('falls back to the directory leaf when the project name cannot become npm-safe', () => {
+    expect(getPreferredPackageJsonName('!!!', 'apps/web')).toBe('web');
   });
 });

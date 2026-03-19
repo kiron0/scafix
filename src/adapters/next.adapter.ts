@@ -1,13 +1,17 @@
 import { spinner } from '@clack/prompts';
-import { rm, writeFile } from 'fs/promises';
-import { join } from 'path';
+import { mkdir, readFile, rm, writeFile } from 'fs/promises';
+import { dirname, join } from 'path';
 import { promptNextCustomizations } from '../prompts/customizations.js';
 import type { CreateOptions, StackAdapter } from '../types/stack.js';
 import { CliExitError } from '../utils/cli-error.js';
 import { exec } from '../utils/exec.js';
 import { logger } from '../utils/logger.js';
-import { getDlxCommand } from '../utils/package-manager.js';
-import { validateDirectory, validateProjectName } from '../utils/validate.js';
+import { detectYarnFlavor, getDlxCommand } from '../utils/package-manager.js';
+import {
+  getPreferredPackageJsonName,
+  validateDirectory,
+  validateProjectName,
+} from '../utils/validate.js';
 
 async function setupPrettier(projectPath: string, packageManager: string): Promise<void> {
   const s = spinner();
@@ -38,6 +42,24 @@ async function setupPrettier(projectPath: string, packageManager: string): Promi
   } catch (error) {
     s.stop('Failed to setup Prettier');
     throw error;
+  }
+}
+
+async function reconcileGeneratedPackageJsonName(
+  projectPath: string,
+  projectName: string,
+  directory: string
+): Promise<void> {
+  const packageJsonPath = join(projectPath, 'package.json');
+  const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as {
+    name?: unknown;
+    [key: string]: unknown;
+  };
+  const preferredName = getPreferredPackageJsonName(projectName, directory);
+
+  if (packageJson.name !== preferredName) {
+    packageJson.name = preferredName;
+    await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
   }
 }
 
@@ -79,6 +101,7 @@ export const nextAdapter: StackAdapter = {
           : packageManager === 'bun'
             ? '--use-bun'
             : '--use-npm';
+    const gitFlag = options.git ? null : '--disable-git';
 
     const pmCommands: Record<string, { cmd: string; args: string[] }> = {
       npm: {
@@ -94,6 +117,7 @@ export const nextAdapter: StackAdapter = {
           '--import-alias',
           '@/*',
           packageManagerFlag,
+          ...(gitFlag ? [gitFlag] : []),
           '--yes',
         ],
       },
@@ -111,6 +135,7 @@ export const nextAdapter: StackAdapter = {
           '--import-alias',
           '@/*',
           packageManagerFlag,
+          ...(gitFlag ? [gitFlag] : []),
           '--yes',
         ],
       },
@@ -128,6 +153,7 @@ export const nextAdapter: StackAdapter = {
           '--import-alias',
           '@/*',
           packageManagerFlag,
+          ...(gitFlag ? [gitFlag] : []),
           '--yes',
         ],
       },
@@ -144,6 +170,7 @@ export const nextAdapter: StackAdapter = {
           '--import-alias',
           '@/*',
           packageManagerFlag,
+          ...(gitFlag ? [gitFlag] : []),
           '--yes',
         ],
       },
@@ -153,7 +180,9 @@ export const nextAdapter: StackAdapter = {
     const { cmd, args } = pmCommands[packageManager] ?? pmCommands.npm;
 
     try {
+      await mkdir(dirname(projectPath), { recursive: true });
       await exec(cmd, args, { cwd: process.cwd(), stdio: 'inherit' });
+      await reconcileGeneratedPackageJsonName(projectPath, projectName, directory);
 
       if (customizations.prettier) {
         await setupPrettier(projectPath, packageManager);
@@ -162,6 +191,7 @@ export const nextAdapter: StackAdapter = {
       if (customizations.shadcn) {
         logger.info('');
         logger.info('Initialising shadcn/ui...');
+        const yarnFlavor = packageManager === 'yarn' ? detectYarnFlavor(projectPath) : undefined;
         const dlx = getDlxCommand(packageManager, 'shadcn@latest', [
           'init',
           '--defaults',
@@ -170,7 +200,10 @@ export const nextAdapter: StackAdapter = {
           'next',
           '--cwd',
           projectPath,
-        ]);
+        ], {
+          directory: projectPath,
+          yarnFlavor,
+        });
         await exec(dlx.cmd, dlx.args, {
           cwd: projectPath,
           stdio: 'inherit',

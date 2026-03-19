@@ -47,11 +47,12 @@ describe.sequential('built CLI root wiring', () => {
   });
 
   it('exits with code 130 when interrupted with SIGINT', async () => {
+    const readyToken = '__SCAFIX_READY__';
     const child = spawn(
       process.execPath,
       [
         '-e',
-        `setInterval(() => {}, 1000); import(${JSON.stringify(cliEntryUrl)}).catch((error) => { console.error(error); process.exit(1); });`,
+        `setInterval(() => {}, 1000); import(${JSON.stringify(cliEntryUrl)}).then(() => { console.log(${JSON.stringify(readyToken)}); }).catch((error) => { console.error(error); process.exit(1); });`,
       ],
       {
         cwd: packageRoot,
@@ -65,7 +66,19 @@ describe.sequential('built CLI root wiring', () => {
     child.stdout.on('data', (chunk) => stdoutChunks.push(String(chunk)));
     child.stderr.on('data', (chunk) => stderrChunks.push(String(chunk)));
 
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('CLI did not become ready before SIGINT')), 2000);
+      child.stdout.on('data', (chunk) => {
+        if (String(chunk).includes(readyToken)) {
+          clearTimeout(timeout);
+          resolve();
+        }
+      });
+      child.on('exit', () => {
+        clearTimeout(timeout);
+        reject(new Error('CLI exited before becoming ready'));
+      });
+    });
     child.kill('SIGINT');
 
     const result = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
@@ -76,6 +89,7 @@ describe.sequential('built CLI root wiring', () => {
 
     expect(result.signal).toBeNull();
     expect(result.code).toBe(130);
+    expect(stdoutChunks.join('')).toContain(readyToken);
     expect(stdoutChunks.join('')).toContain(APP_CONFIG.thankYouMessage);
     expect(stderrChunks.join('')).not.toContain('Error:');
   });

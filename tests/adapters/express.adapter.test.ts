@@ -182,6 +182,48 @@ describe.sequential('expressAdapter', () => {
     }
   });
 
+  it.each([
+    {
+      controllerPath: 'src/controllers/example.js',
+      pattern: 'mvc',
+    },
+    {
+      controllerPath: 'src/controllers/user.js',
+      pattern: 'rest',
+    },
+    {
+      controllerPath: 'src/presentation/controllers/product.js',
+      pattern: 'layered',
+    },
+  ])(
+    'strips type-only Express imports from JavaScript %s controllers',
+    async ({ controllerPath, pattern }) => {
+      mocks.promptExpressCustomizations.mockResolvedValue({
+        cors: false,
+        dotenv: true,
+        eslint: false,
+        helmet: false,
+        pattern,
+        prettier: false,
+        typescript: false,
+      });
+
+      const projectName = `demo-express-js-${pattern}`;
+      await expressAdapter.create({
+        directory: projectName,
+        packageManager: 'npm',
+        projectName,
+        yes: true,
+      });
+
+      const controllerContent = await readFile(join(tempDir, projectName, controllerPath), 'utf8');
+
+      expect(controllerContent).not.toContain("import { Request, Response } from 'express'");
+      expect(controllerContent).not.toContain(': Request');
+      expect(controllerContent).not.toContain(': Response');
+    }
+  );
+
   it('applies explicit customization overrides on top of prompt defaults', async () => {
     mocks.promptExpressCustomizations.mockResolvedValue({
       cors: false,

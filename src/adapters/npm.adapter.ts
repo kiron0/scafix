@@ -1,12 +1,14 @@
 import { spinner } from '@clack/prompts';
 import { mkdir, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
+import type { NpmPackageCustomizations } from '../prompts/customizations.js';
 import { promptNpmPackageCustomizations } from '../prompts/customizations.js';
 import type { CreateOptions, StackAdapter } from '../types/stack.js';
 import { exec } from '../utils/exec.js';
 import { getEslintPackages } from '../utils/eslint.js';
 import { logger } from '../utils/logger.js';
 import {
+  detectYarnFlavor,
   getAddCommand,
   getInstallCommand,
   getPublishCommand,
@@ -17,6 +19,46 @@ import {
   validateDirectory,
   validateNpmPackageName,
 } from '../utils/validate.js';
+
+function resolveBooleanOverride(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined;
+}
+
+function resolveBuildToolOverride(value: unknown): NpmPackageCustomizations['buildTool'] | undefined {
+  return value === 'tsup' || value === 'rollup' || value === 'esbuild' || value === 'none'
+    ? value
+    : undefined;
+}
+
+function resolveTestFrameworkOverride(
+  value: unknown
+): NpmPackageCustomizations['testFramework'] | undefined {
+  return value === 'vitest' || value === 'jest' || value === 'none' ? value : undefined;
+}
+
+function applyCustomizationOverrides(
+  customizations: NpmPackageCustomizations,
+  options: CreateOptions
+): NpmPackageCustomizations {
+  return {
+    ...customizations,
+    ...(resolveBooleanOverride(options.typescript) === undefined
+      ? {}
+      : { typescript: resolveBooleanOverride(options.typescript) }),
+    ...(resolveBuildToolOverride(options.buildTool) === undefined
+      ? {}
+      : { buildTool: resolveBuildToolOverride(options.buildTool) }),
+    ...(resolveBooleanOverride(options.eslint) === undefined
+      ? {}
+      : { eslint: resolveBooleanOverride(options.eslint) }),
+    ...(resolveBooleanOverride(options.prettier) === undefined
+      ? {}
+      : { prettier: resolveBooleanOverride(options.prettier) }),
+    ...(resolveTestFrameworkOverride(options.testFramework) === undefined
+      ? {}
+      : { testFramework: resolveTestFrameworkOverride(options.testFramework) }),
+  };
+}
 
 export const npmPackageAdapter: StackAdapter = {
   id: 'npm',
@@ -37,6 +79,13 @@ export const npmPackageAdapter: StackAdapter = {
 
     const projectPath = join(process.cwd(), directory);
     const dirInfo = validateDirectory(directory);
+    const packageManagerCommandOptions =
+      packageManager === 'yarn'
+        ? {
+            directory: projectPath,
+            yarnFlavor: detectYarnFlavor(projectPath),
+          }
+        : undefined;
 
     if (!dirInfo.valid) {
       throw new Error(dirInfo.reason ?? `Invalid directory: ${directory}`);
@@ -49,9 +98,12 @@ export const npmPackageAdapter: StackAdapter = {
     logger.info(`Creating NPM package: ${projectName}`);
 
     // Prompt for customizations
-    const customizations = await promptNpmPackageCustomizations({
-      yes: Boolean(options.yes),
-    });
+    const customizations = applyCustomizationOverrides(
+      await promptNpmPackageCustomizations({
+        yes: Boolean(options.yes),
+      }),
+      options
+    );
 
     let createdProjectDirectory = false;
 
@@ -308,7 +360,7 @@ console.log(greet('World'));
 ${getInstallCommand(packageManager)}
 
 ${customizations.typescript ? `# Build\n${getRunCommand(packageManager, 'build')}\n\n` : ''}${customizations.testFramework !== 'none' ? `# Run tests\n${getRunCommand(packageManager, 'test')}\n\n` : ''}# Publish
-${getPublishCommand(packageManager)}
+${getPublishCommand(packageManager, packageManagerCommandOptions)}
 \`\`\`
 
 ## License
@@ -592,7 +644,7 @@ module.exports = {
       if (customizations.testFramework !== 'none') {
         logger.info(`  ${getRunCommand(packageManager, 'test')}`);
       }
-      logger.info(`  ${getPublishCommand(packageManager)}`);
+      logger.info(`  ${getPublishCommand(packageManager, packageManagerCommandOptions)}`);
     } catch (error) {
       if (createdProjectDirectory) {
         try {

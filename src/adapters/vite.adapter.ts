@@ -6,8 +6,12 @@ import type { CreateOptions, StackAdapter } from '../types/stack.js';
 import { CliExitError } from '../utils/cli-error.js';
 import { exec } from '../utils/exec.js';
 import { logger } from '../utils/logger.js';
-import { getDlxCommand } from '../utils/package-manager.js';
-import { validateDirectory, validateProjectName } from '../utils/validate.js';
+import { detectYarnFlavor, getDlxCommand } from '../utils/package-manager.js';
+import {
+  getPreferredPackageJsonName,
+  validateDirectory,
+  validateProjectName,
+} from '../utils/validate.js';
 
 async function fileExists(filePath: string): Promise<boolean> {
   try {
@@ -60,6 +64,24 @@ async function patchViteConfig(configPath: string): Promise<void> {
   }
 
   await writeFile(configPath, content);
+}
+
+async function reconcileGeneratedPackageJsonName(
+  projectPath: string,
+  projectName: string,
+  directory: string
+): Promise<void> {
+  const packageJsonPath = join(projectPath, 'package.json');
+  const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as {
+    name?: unknown;
+    [key: string]: unknown;
+  };
+  const preferredName = getPreferredPackageJsonName(projectName, directory);
+
+  if (packageJson.name !== preferredName) {
+    packageJson.name = preferredName;
+    await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
+  }
 }
 
 async function setupTailwindV4(projectPath: string, packageManager: string): Promise<void> {
@@ -184,6 +206,28 @@ async function setupPrettier(projectPath: string, packageManager: string): Promi
   }
 }
 
+async function installProjectDependencies(
+  projectPath: string,
+  packageManager: string
+): Promise<void> {
+  const s = spinner();
+  s.start('Installing dependencies...');
+  try {
+    await exec(
+      packageManager === 'npm' ? 'npm' : packageManager,
+      ['install'],
+      {
+        cwd: projectPath,
+        stdio: 'inherit',
+      }
+    );
+    s.stop('Dependencies installed');
+  } catch (error) {
+    s.stop('Failed to install dependencies');
+    throw error;
+  }
+}
+
 export const viteReactAdapter: StackAdapter = {
   id: 'vite',
   name: 'Vite',
@@ -240,6 +284,8 @@ export const viteReactAdapter: StackAdapter = {
 
     try {
       await exec(cmd, args, { cwd: process.cwd(), stdio: 'inherit' });
+      await reconcileGeneratedPackageJsonName(projectPath, projectName, directory);
+      await installProjectDependencies(projectPath, packageManager);
 
       let tailwindAdded = false;
       if (customizations.tailwind) {
@@ -259,6 +305,7 @@ export const viteReactAdapter: StackAdapter = {
         const shadcnSpinner = spinner();
         shadcnSpinner.start('Initialising shadcn/ui...');
         shadcnSpinner.stop();
+        const yarnFlavor = packageManager === 'yarn' ? detectYarnFlavor(projectPath) : undefined;
         const dlx = getDlxCommand(packageManager, 'shadcn@latest', [
           'init',
           '--defaults',
@@ -267,7 +314,10 @@ export const viteReactAdapter: StackAdapter = {
           'vite',
           '--cwd',
           projectPath,
-        ]);
+        ], {
+          directory: projectPath,
+          yarnFlavor,
+        });
         await exec(dlx.cmd, dlx.args, {
           cwd: projectPath,
           stdio: 'inherit',
@@ -277,7 +327,6 @@ export const viteReactAdapter: StackAdapter = {
       logger.info('');
       logger.info('Next steps:');
       logger.info(`  cd ${directory}`);
-      logger.info(`  ${packageManager === 'npm' ? 'npm install' : `${packageManager} install`}`);
       logger.info(`  ${packageManager === 'npm' ? 'npm run dev' : `${packageManager} run dev`}`);
     } catch (error) {
       await rm(projectPath, { force: true, recursive: true });

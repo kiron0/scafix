@@ -63,9 +63,29 @@ function validatePathSegment(
   return null;
 }
 
+function isValidNpmPackageName(name: string): boolean {
+  return validatePackageName(name).validForNewPackages;
+}
+
+function normalizePackageNameCandidate(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9._-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^[._-]+/, '')
+    .replace(/[._-]+$/, '');
+}
+
 export function validateProjectName(name: string): boolean {
   if (!name || name.trim().length === 0) {
     logger.error('Project name cannot be empty');
+    return false;
+  }
+
+  if (name !== name.trim()) {
+    logger.error('Project name cannot have leading or trailing whitespace');
     return false;
   }
 
@@ -117,6 +137,29 @@ export function getDefaultDirectoryName(projectName: string): string {
   }
 
   return trimmedName;
+}
+
+export function getPreferredPackageJsonName(projectName: string, directory: string): string {
+  const directoryLeaf =
+    directory
+      .split(/[\\/]+/)
+      .filter((segment) => segment.length > 0)
+      .pop() ?? directory;
+
+  const candidates = [
+    projectName.trim(),
+    normalizePackageNameCandidate(projectName),
+    directoryLeaf.trim(),
+    normalizePackageNameCandidate(directoryLeaf),
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate && isValidNpmPackageName(candidate)) {
+      return candidate;
+    }
+  }
+
+  return normalizePackageNameCandidate(directoryLeaf) || 'app';
 }
 
 export function checkDirectoryExists(directory: string): boolean {

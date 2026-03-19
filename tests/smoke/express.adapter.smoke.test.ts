@@ -15,6 +15,18 @@ function runPackageScript(projectPath: string, script: string) {
   });
 }
 
+function runNodeModuleImport(projectPath: string, modulePath: string) {
+  return spawnSync(
+    process.execPath,
+    ['--input-type=module', '-e', `import(${JSON.stringify(modulePath)}).then(() => process.exit(0))`],
+    {
+      cwd: projectPath,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    }
+  );
+}
+
 describeIf.sequential('express adapter smoke', () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;
   let tempDir: string;
@@ -78,5 +90,27 @@ describeIf.sequential('express adapter smoke', () => {
 
     const buildResult = runPackageScript(projectPath, 'build');
     expect(buildResult.status).toBe(0);
+  }, 300000);
+
+  it('loads a JavaScript rest-pattern controller without runtime import errors', async () => {
+    const projectName = 'smoke-express-rest-js';
+
+    await expressAdapter.create({
+      directory: projectName,
+      dotenv: true,
+      eslint: true,
+      packageManager: 'npm',
+      pattern: 'rest',
+      prettier: false,
+      projectName,
+      typescript: false,
+      yes: true,
+    });
+
+    const projectPath = join(tempDir, projectName);
+    await expect(access(join(projectPath, 'src', 'controllers', 'user.js'))).resolves.toBeUndefined();
+
+    const importResult = runNodeModuleImport(projectPath, './src/controllers/user.js');
+    expect(importResult.status).toBe(0);
   }, 300000);
 });

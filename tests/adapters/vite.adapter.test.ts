@@ -54,6 +54,7 @@ describe.sequential('viteReactAdapter', () => {
       await mkdir(join(projectPath, 'src'), { recursive: true });
       await writeFile(join(projectPath, 'src', 'index.css'), 'body {}\n');
       await writeFile(join(projectPath, 'vite.config.js'), 'export default { plugins: [] }\n');
+      await writeFile(join(projectPath, 'package.json'), `${JSON.stringify({ name: projectName }, null, 2)}\n`);
     });
   });
 
@@ -87,6 +88,14 @@ describe.sequential('viteReactAdapter', () => {
         stdio: 'inherit',
       })
     );
+    expect(mocks.exec).toHaveBeenCalledWith(
+      'npm',
+      ['install'],
+      expect.objectContaining({
+        cwd: join(tempDir, 'demo-vite'),
+        stdio: 'inherit',
+      })
+    );
   });
 
   it('applies JS template, tailwind v3, and prettier when requested', async () => {
@@ -110,6 +119,14 @@ describe.sequential('viteReactAdapter', () => {
       ['create', 'vite', 'demo-vite-js', '--template', 'react'],
       expect.objectContaining({
         cwd: tempDir,
+        stdio: 'inherit',
+      })
+    );
+    expect(mocks.exec).toHaveBeenCalledWith(
+      'pnpm',
+      ['install'],
+      expect.objectContaining({
+        cwd: projectPath,
         stdio: 'inherit',
       })
     );
@@ -161,6 +178,14 @@ describe.sequential('viteReactAdapter', () => {
     });
 
     expect(mocks.exec).toHaveBeenCalledWith(
+      'bun',
+      ['install'],
+      expect.objectContaining({
+        cwd: join(tempDir, 'demo-vite-bun'),
+        stdio: 'inherit',
+      })
+    );
+    expect(mocks.exec).toHaveBeenCalledWith(
       'bunx',
       [
         'shadcn@latest',
@@ -179,6 +204,28 @@ describe.sequential('viteReactAdapter', () => {
     );
   });
 
+  it('reconciles package.json name from the requested project name when directory differs', async () => {
+    mocks.promptViteReactCustomizations.mockResolvedValue({
+      prettier: false,
+      shadcn: false,
+      tailwind: false,
+      typescript: true,
+    });
+
+    await viteReactAdapter.create({
+      directory: 'apps/web',
+      packageManager: 'npm',
+      projectName: 'Marketing Site',
+      yes: true,
+    });
+
+    const packageJson = JSON.parse(
+      await readFile(join(tempDir, 'apps', 'web', 'package.json'), 'utf8')
+    ) as { name: string };
+
+    expect(packageJson.name).toBe('marketing-site');
+  });
+
   it('cleans up the generated project directory when shadcn setup fails', async () => {
     mocks.promptViteReactCustomizations.mockResolvedValue({
       prettier: false,
@@ -194,6 +241,7 @@ describe.sequential('viteReactAdapter', () => {
         await mkdir(join(projectPath, 'src'), { recursive: true });
         await writeFile(join(projectPath, 'src', 'index.css'), 'body {}\n');
         await writeFile(join(projectPath, 'vite.config.js'), 'export default { plugins: [] }\n');
+        await writeFile(join(projectPath, 'package.json'), `${JSON.stringify({ name: projectName }, null, 2)}\n`);
         return;
       }
 

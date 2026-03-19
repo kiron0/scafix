@@ -1,4 +1,4 @@
-import { access, mkdir, mkdtemp, rm, writeFile } from 'fs/promises';
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -59,7 +59,7 @@ describe.sequential('nextAdapter', () => {
 
       const projectPath = join(tempDir, projectName);
       await mkdir(projectPath, { recursive: true });
-      await writeFile(join(projectPath, 'package.json'), '{}\n');
+      await writeFile(join(projectPath, 'package.json'), `${JSON.stringify({ name: projectName }, null, 2)}\n`);
     });
   });
 
@@ -102,6 +102,7 @@ describe.sequential('nextAdapter', () => {
         '--import-alias',
         '@/*',
         '--use-pnpm',
+        '--disable-git',
         '--yes',
       ],
       expect.objectContaining({
@@ -124,6 +125,7 @@ describe.sequential('nextAdapter', () => {
         '--import-alias',
         '@/*',
         '--use-npm',
+        '--disable-git',
         '--yes',
       ],
       cmd: 'npx',
@@ -142,6 +144,7 @@ describe.sequential('nextAdapter', () => {
         '--import-alias',
         '@/*',
         '--use-pnpm',
+        '--disable-git',
         '--yes',
       ],
       cmd: 'pnpm',
@@ -160,6 +163,7 @@ describe.sequential('nextAdapter', () => {
         '--import-alias',
         '@/*',
         '--use-yarn',
+        '--disable-git',
         '--yes',
       ],
       cmd: 'yarn',
@@ -177,6 +181,7 @@ describe.sequential('nextAdapter', () => {
         '--import-alias',
         '@/*',
         '--use-bun',
+        '--disable-git',
         '--yes',
       ],
       cmd: 'bunx',
@@ -245,6 +250,7 @@ describe.sequential('nextAdapter', () => {
         '--import-alias',
         '@/*',
         '--use-bun',
+        '--disable-git',
         '--yes',
       ],
       expect.objectContaining({
@@ -280,7 +286,32 @@ describe.sequential('nextAdapter', () => {
     await expect(access(join(projectPath, '.prettierrc'))).resolves.toBeUndefined();
   });
 
-  it('uses yarn classic commands for Next.js scaffolding and follow-up tooling', async () => {
+  it('reconciles package.json name from the requested project name when directory differs', async () => {
+    mocks.promptNextCustomizations.mockResolvedValue({
+      appRouter: true,
+      eslint: true,
+      prettier: false,
+      shadcn: false,
+      srcDir: true,
+      tailwind: true,
+      typescript: true,
+    });
+
+    await nextAdapter.create({
+      directory: 'apps/web',
+      packageManager: 'npm',
+      projectName: 'Marketing Site',
+      yes: true,
+    });
+
+    const packageJson = JSON.parse(
+      await readFile(join(tempDir, 'apps', 'web', 'package.json'), 'utf8')
+    ) as { name: string };
+
+    expect(packageJson.name).toBe('marketing-site');
+  });
+
+  it('uses yarn berry commands for Next.js follow-up tooling when the workspace is berry', async () => {
     mocks.promptNextCustomizations.mockResolvedValue({
       appRouter: true,
       eslint: true,
@@ -290,6 +321,7 @@ describe.sequential('nextAdapter', () => {
       tailwind: true,
       typescript: true,
     });
+    await writeFile(join(tempDir, '.yarnrc.yml'), 'nodeLinker: node-modules\n');
 
     await nextAdapter.create({
       directory: 'demo-next-yarn',
@@ -313,6 +345,7 @@ describe.sequential('nextAdapter', () => {
         '--import-alias',
         '@/*',
         '--use-yarn',
+        '--disable-git',
         '--yes',
       ],
       expect.objectContaining({
@@ -321,8 +354,9 @@ describe.sequential('nextAdapter', () => {
       })
     );
     expect(mocks.exec).toHaveBeenCalledWith(
-      'npx',
+      'yarn',
       [
+        'dlx',
         'shadcn@latest',
         'init',
         '--defaults',
@@ -361,7 +395,7 @@ describe.sequential('nextAdapter', () => {
       if (projectName && options?.cwd === tempDir) {
         const projectPath = join(tempDir, projectName);
         await mkdir(projectPath, { recursive: true });
-        await writeFile(join(projectPath, 'package.json'), '{}\n');
+        await writeFile(join(projectPath, 'package.json'), `${JSON.stringify({ name: projectName }, null, 2)}\n`);
         return;
       }
 
@@ -379,5 +413,50 @@ describe.sequential('nextAdapter', () => {
     ).rejects.toThrow('shadcn init failed');
 
     await expect(access(join(tempDir, 'demo-next-failed'))).rejects.toThrow();
+  });
+
+  it('keeps create-next-app git initialisation enabled only when git is explicitly requested', async () => {
+    mocks.promptNextCustomizations.mockResolvedValue({
+      appRouter: true,
+      eslint: true,
+      prettier: false,
+      shadcn: false,
+      srcDir: true,
+      tailwind: true,
+      typescript: true,
+    });
+
+    await nextAdapter.create({
+      git: true,
+      packageManager: 'npm',
+      projectName: 'demo-next-git',
+      yes: true,
+    });
+
+    expect(mocks.exec).toHaveBeenCalledWith(
+      'npx',
+      [
+        'create-next-app@latest',
+        'demo-next-git',
+        '--ts',
+        '--eslint',
+        '--app',
+        '--src-dir',
+        '--tailwind',
+        '--import-alias',
+        '@/*',
+        '--use-npm',
+        '--yes',
+      ],
+      expect.objectContaining({
+        cwd: tempDir,
+        stdio: 'inherit',
+      })
+    );
+    expect(mocks.exec).not.toHaveBeenCalledWith(
+      'npx',
+      expect.arrayContaining(['--disable-git']),
+      expect.anything()
+    );
   });
 });

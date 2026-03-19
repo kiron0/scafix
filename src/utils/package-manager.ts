@@ -1,10 +1,16 @@
-import { existsSync } from 'fs';
-import { join, resolve } from 'path';
-import { cwd } from 'process';
+import { execFileSync } from 'child_process';
+import { existsSync, readFileSync } from 'fs';
+import { dirname, join, resolve } from 'path';
 
 export const SUPPORTED_PACKAGE_MANAGERS = ['npm', 'pnpm', 'yarn', 'bun'] as const;
 
 export type PackageManager = (typeof SUPPORTED_PACKAGE_MANAGERS)[number];
+export type YarnFlavor = 'classic' | 'berry';
+
+interface PackageManagerCommandOptions {
+  directory?: string;
+  yarnFlavor?: YarnFlavor;
+}
 
 export function isPackageManager(value: unknown): value is PackageManager {
   return typeof value === 'string' && SUPPORTED_PACKAGE_MANAGERS.includes(value as PackageManager);
@@ -14,35 +20,78 @@ export function resolvePackageManagerOption(value: unknown): PackageManager | nu
   return isPackageManager(value) ? value : null;
 }
 
-/**
- * Detects the package manager by checking for lock files in the directory
- * Checks in order: bun.lockb, pnpm-lock.yaml, yarn.lock, package-lock.json
- */
-export function detectPackageManager(directory: string): PackageManager {
-  const dir = resolve(directory);
+function parsePackageManagerField(value: unknown): PackageManager | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
 
+  const atIndex = value.indexOf('@');
+  const managerName = atIndex === -1 ? value : value.slice(0, atIndex);
+  return resolvePackageManagerOption(managerName);
+}
+
+function detectPackageManagerInDirectory(directory: string): PackageManager | null {
   // Check for bun.lock
-  if (existsSync(join(dir, 'bun.lock')) || existsSync(join(dir, 'bun.lockb'))) {
+  if (existsSync(join(directory, 'bun.lock')) || existsSync(join(directory, 'bun.lockb'))) {
     return 'bun';
   }
 
   // Check for pnpm-lock.yaml
-  if (existsSync(join(dir, 'pnpm-lock.yaml'))) {
+  if (existsSync(join(directory, 'pnpm-lock.yaml'))) {
     return 'pnpm';
   }
 
   // Check for yarn.lock
-  if (existsSync(join(dir, 'yarn.lock'))) {
+  if (existsSync(join(directory, 'yarn.lock'))) {
     return 'yarn';
   }
 
   // Check for package-lock.json
-  if (existsSync(join(dir, 'package-lock.json'))) {
+  if (existsSync(join(directory, 'package-lock.json'))) {
     return 'npm';
   }
 
-  // Default to npm if no lock file found
-  return 'npm';
+  const packageJsonPath = join(directory, 'package.json');
+  if (existsSync(packageJsonPath)) {
+    try {
+      const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as {
+        packageManager?: unknown;
+      };
+      return parsePackageManagerField(packageJson.packageManager);
+    } catch {
+      // Ignore unreadable package.json files and keep walking up.
+    }
+  }
+
+  return null;
+}
+
+function findNearestPackageManager(directory: string): PackageManager | null {
+  let currentDir = resolve(directory);
+
+  while (true) {
+    const packageManager = detectPackageManagerInDirectory(currentDir);
+    if (packageManager) {
+      return packageManager;
+    }
+
+    const parentDir = dirname(currentDir);
+    if (parentDir === currentDir) {
+      break;
+    }
+    currentDir = parentDir;
+  }
+
+  return null;
+}
+
+/**
+ * Detects the package manager by checking for lock files in the directory tree
+ * Checks in order: bun.lockb, pnpm-lock.yaml, yarn.lock, package-lock.json
+ * Prefers the nearest ancestor containing a supported lockfile.
+ */
+export function detectPackageManager(directory: string): PackageManager {
+  return findNearestPackageManager(directory) ?? 'npm';
 }
 
 /**
@@ -50,15 +99,7 @@ export function detectPackageManager(directory: string): PackageManager {
  * Useful for detecting which package manager the user prefers
  */
 export function detectPackageManagerFromCwd(): PackageManager | null {
-  const currentDir = cwd();
-  const pm = detectPackageManager(currentDir);
-
-  // If we detected npm but there's no lock file, return null to indicate no preference
-  if (pm === 'npm' && !existsSync(join(currentDir, 'package-lock.json'))) {
-    return null;
-  }
-
-  return pm;
+  return findNearestPackageManager(process.cwd());
 }
 
 /**
@@ -105,14 +146,86 @@ export function getRunCommand(pm: PackageManager, script: string): string {
       : `${pm} ${script}`;
 }
 
-export function getPublishCommand(pm: PackageManager): string {
+function parseYarnMajorVersion(version: string): number | null {
+  const major = Number.parseInt(version.trim().split('.')[0] ?? '', 10);
+  return Number.isNaN(major) ? null : major;
+}
+
+function detectYarnFlavorFromExecutable(): YarnFlavor {
+  try {
+    const version = execFileSync('yarn', ['--version'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    const major = parseYarnMajorVersion(version);
+    return major !== null && major >= 2 ? 'berry' : 'classic';
+  } catch {
+    return 'classic';
+  }
+}
+
+export function detectYarnFlavor(directory: string = process.cwd()): YarnFlavor {
+  let currentDir = resolve(directory);
+
+  while (true) {
+    if (
+      existsSync(join(currentDir, '.yarnrc.yml')) ||
+      existsSync(join(currentDir, '.pnp.cjs')) ||
+      existsSync(join(currentDir, '.pnp.loader.mjs')) ||
+      existsSync(join(currentDir, '.yarn', 'releases'))
+    ) {
+      return 'berry';
+    }
+
+    const packageJsonPath = join(currentDir, 'package.json');
+    if (existsSync(packageJsonPath)) {
+      try {
+        const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as {
+          packageManager?: unknown;
+        };
+        if (typeof packageJson.packageManager === 'string') {
+          const managerName = parsePackageManagerField(packageJson.packageManager);
+          const version = packageJson.packageManager.slice(packageJson.packageManager.indexOf('@') + 1);
+          if (managerName === 'yarn') {
+            const major = version ? parseYarnMajorVersion(version) : null;
+            return major !== null && major >= 2 ? 'berry' : 'classic';
+          }
+        }
+      } catch {
+        // Ignore unreadable package.json files and keep walking up.
+      }
+    }
+
+    const parentDir = dirname(currentDir);
+    if (parentDir === currentDir) {
+      break;
+    }
+    currentDir = parentDir;
+  }
+
+  return detectYarnFlavorFromExecutable();
+}
+
+function resolveYarnFlavor(options: PackageManagerCommandOptions = {}): YarnFlavor {
+  return options.yarnFlavor ?? detectYarnFlavor(options.directory);
+}
+
+export function getPublishCommand(
+  pm: PackageManager,
+  options: PackageManagerCommandOptions = {}
+): string {
+  if (pm === 'yarn') {
+    return resolveYarnFlavor(options) === 'berry' ? 'yarn npm publish' : 'yarn publish';
+  }
+
   return `${pm} publish`;
 }
 
 export function getDlxCommand(
   pm: PackageManager,
   pkg: string,
-  args: string[] = []
+  args: string[] = [],
+  options: PackageManagerCommandOptions = {}
 ): { cmd: string; args: string[] } {
   if (pm === 'pnpm') {
     return {
@@ -122,6 +235,13 @@ export function getDlxCommand(
   }
 
   if (pm === 'yarn') {
+    if (resolveYarnFlavor(options) === 'berry') {
+      return {
+        cmd: 'yarn',
+        args: ['dlx', pkg, ...args],
+      };
+    }
+
     return {
       cmd: 'npx',
       args: [pkg, ...args],

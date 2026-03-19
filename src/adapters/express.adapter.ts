@@ -50,6 +50,15 @@ function applyCustomizationOverrides(
   };
 }
 
+function toJavaScriptTemplate(content: string): string {
+  return content
+    .replace(/^import\s+\{\s*Request\s*,\s*Response\s*\}\s+from\s+'express'\n/m, '')
+    .replace(/:\s*Request/g, '')
+    .replace(/:\s*Response/g, '')
+    .replace(/:\s*string/g, '')
+    .replace(/:\s*any/g, '');
+}
+
 function getDependencyInstallArgs(
   packageManager: string,
   packages: string[],
@@ -217,11 +226,7 @@ export const remove = async (req: Request, res: Response) => {
 `;
   const finalControllerContent = customizations.typescript
     ? controllerContent
-    : controllerContent
-        .replace(/:\s*Request/g, '')
-        .replace(/:\s*Response/g, '')
-        .replace(/:\s*string/g, '')
-        .replace(/:\s*any/g, '');
+    : toJavaScriptTemplate(controllerContent);
   await writeFile(join(srcPath, 'controllers', `example.${ext}`), finalControllerContent);
 
   // Generate model
@@ -252,7 +257,7 @@ export const remove = async (id: string) => {
 `;
   const finalModelContent = customizations.typescript
     ? modelContent
-    : modelContent.replace(/:\s*string/g, '').replace(/:\s*any/g, '');
+    : toJavaScriptTemplate(modelContent);
   await writeFile(join(srcPath, 'models', `example.${ext}`), finalModelContent);
 }
 
@@ -377,11 +382,7 @@ export const deleteUser = async (req: Request, res: Response) => {
 `;
   const finalUserControllerContent = customizations.typescript
     ? controllerContent
-    : controllerContent
-        .replace(/:\s*Request/g, '')
-        .replace(/:\s*Response/g, '')
-        .replace(/:\s*string/g, '')
-        .replace(/:\s*any/g, '');
+    : toJavaScriptTemplate(controllerContent);
   await writeFile(join(srcPath, 'controllers', `user.${ext}`), finalUserControllerContent);
 
   // Generate service
@@ -412,7 +413,7 @@ export const deleteUser = async (id: string) => {
 `;
   const finalServiceContent = customizations.typescript
     ? serviceContent
-    : serviceContent.replace(/:\s*string/g, '').replace(/:\s*any/g, '');
+    : toJavaScriptTemplate(serviceContent);
   await writeFile(join(srcPath, 'services', `user.${ext}`), finalServiceContent);
 }
 
@@ -527,11 +528,7 @@ export const deleteProduct = async (req: Request, res: Response) => {
   });
   const finalProductControllerContent = customizations.typescript
     ? controllerContent
-    : controllerContent
-        .replace(/:\s*Request/g, '')
-        .replace(/:\s*Response/g, '')
-        .replace(/:\s*string/g, '')
-        .replace(/:\s*any/g, '');
+    : toJavaScriptTemplate(controllerContent);
   await writeFile(
     join(srcPath, 'presentation', 'controllers', `product.${ext}`),
     finalProductControllerContent
@@ -564,7 +561,7 @@ export const deleteProduct = async (id: string) => {
 `;
   const finalBusinessContent = customizations.typescript
     ? businessContent
-    : businessContent.replace(/:\s*string/g, '').replace(/:\s*any/g, '');
+    : toJavaScriptTemplate(businessContent);
   await writeFile(join(srcPath, 'business', `product.${ext}`), finalBusinessContent);
 
   // Generate data layer
@@ -595,7 +592,7 @@ export const remove = async (id: string) => {
 `;
   const finalDataContent = customizations.typescript
     ? dataContent
-    : dataContent.replace(/:\s*string/g, '').replace(/:\s*any/g, '');
+    : toJavaScriptTemplate(dataContent);
   await writeFile(join(srcPath, 'data', `product.${ext}`), finalDataContent);
 }
 
