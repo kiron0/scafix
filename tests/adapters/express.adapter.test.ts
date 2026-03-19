@@ -235,4 +235,31 @@ describe.sequential('expressAdapter', () => {
     expect(mocks.promptExpressCustomizations).not.toHaveBeenCalled();
     expect(mocks.exec).not.toHaveBeenCalled();
   });
+
+  it('cleans up the generated project directory when dependency installation fails', async () => {
+    mocks.promptExpressCustomizations.mockResolvedValue({
+      cors: false,
+      dotenv: true,
+      eslint: false,
+      helmet: false,
+      pattern: 'simple',
+      prettier: false,
+      typescript: true,
+    });
+    mocks.exec.mockRejectedValueOnce(new Error('registry timeout'));
+
+    await expect(
+      expressAdapter.create({
+        directory: 'demo-express-failed',
+        packageManager: 'npm',
+        projectName: 'demo-express-failed',
+        yes: true,
+      })
+    ).rejects.toThrow('registry timeout');
+
+    await expect(access(join(tempDir, 'demo-express-failed'))).rejects.toThrow();
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to create project: registry timeout')
+    );
+  });
 });

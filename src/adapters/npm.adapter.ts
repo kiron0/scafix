@@ -1,5 +1,5 @@
 import { spinner } from '@clack/prompts';
-import { mkdir, writeFile } from 'fs/promises';
+import { mkdir, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { promptNpmPackageCustomizations } from '../prompts/customizations.js';
 import type { CreateOptions, StackAdapter } from '../types/stack.js';
@@ -53,9 +53,12 @@ export const npmPackageAdapter: StackAdapter = {
       yes: Boolean(options.yes),
     });
 
+    let createdProjectDirectory = false;
+
     try {
       // Create project directory
       await mkdir(projectPath, { recursive: true });
+      createdProjectDirectory = true;
 
       // Create src directory
       await mkdir(join(projectPath, 'src'), { recursive: true });
@@ -591,6 +594,18 @@ module.exports = {
       }
       logger.info(`  ${getPublishCommand(packageManager)}`);
     } catch (error) {
+      if (createdProjectDirectory) {
+        try {
+          await rm(projectPath, { force: true, recursive: true });
+        } catch (cleanupError) {
+          logger.warn(
+            `Failed to clean up ${directory}: ${
+              cleanupError instanceof Error ? cleanupError.message : String(cleanupError)
+            }`
+          );
+        }
+      }
+
       logger.error(
         `Failed to create package: ${error instanceof Error ? error.message : String(error)}`
       );

@@ -1,5 +1,5 @@
 import { spinner } from '@clack/prompts';
-import { mkdir, writeFile } from 'fs/promises';
+import { mkdir, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
 import type { ExpressCustomizations } from '../prompts/customizations.js';
 import { promptExpressCustomizations } from '../prompts/customizations.js';
@@ -682,9 +682,12 @@ export const expressAdapter: StackAdapter = {
       options
     );
 
+    let createdProjectDirectory = false;
+
     try {
       // Create project directory
       await mkdir(projectPath, { recursive: true });
+      createdProjectDirectory = true;
 
       // Create package.json
       const packageJson = {
@@ -911,6 +914,18 @@ build
       logger.info(`  cd ${directory}`);
       logger.info(`  ${getDevCommand(detectedPm)}`);
     } catch (error) {
+      if (createdProjectDirectory) {
+        try {
+          await rm(projectPath, { force: true, recursive: true });
+        } catch (cleanupError) {
+          logger.warn(
+            `Failed to clean up ${directory}: ${
+              cleanupError instanceof Error ? cleanupError.message : String(cleanupError)
+            }`
+          );
+        }
+      }
+
       logger.error(
         `Failed to create project: ${error instanceof Error ? error.message : String(error)}`
       );

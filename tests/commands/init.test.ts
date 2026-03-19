@@ -78,7 +78,11 @@ import { initCommand } from '../../src/commands/init.js';
 describe('initCommand', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.detectPackageManagerFromCwd.mockReturnValue(null);
     mocks.selectStack.mockResolvedValue(mocks.adapters[0]);
+    mocks.promptDirectory.mockResolvedValue('my-project');
+    mocks.promptGit.mockResolvedValue(false);
+    mocks.promptPackageManager.mockResolvedValue('npm');
     mocks.promptProjectName.mockResolvedValue('my-project');
     mocks.getDefaultDirectoryName.mockImplementation((name: string) => name);
     mocks.validateDirectory.mockReturnValue({
@@ -119,6 +123,18 @@ describe('initCommand', () => {
     );
   });
 
+  it('aborts when the directory prompt is cancelled', async () => {
+    mocks.promptDirectory.mockRejectedValue(new CliExitError(130));
+
+    await expect(
+      initCommand({
+        name: 'my-project',
+      })
+    ).rejects.toMatchObject({ exitCode: 130 });
+
+    expect(mocks.adapters[0].create).not.toHaveBeenCalled();
+  });
+
   it('uses a detected package manager without prompting', async () => {
     mocks.detectPackageManagerFromCwd.mockReturnValue('bun');
 
@@ -130,6 +146,30 @@ describe('initCommand', () => {
         packageManager: 'bun',
       })
     );
+  });
+
+  it('aborts when the package-manager prompt is cancelled', async () => {
+    mocks.promptPackageManager.mockRejectedValue(new CliExitError(130));
+
+    await expect(
+      initCommand({
+        name: 'my-project',
+      })
+    ).rejects.toMatchObject({ exitCode: 130 });
+
+    expect(mocks.adapters[0].create).not.toHaveBeenCalled();
+  });
+
+  it('aborts when the git prompt is cancelled', async () => {
+    mocks.promptGit.mockRejectedValue(new CliExitError(130));
+
+    await expect(
+      initCommand({
+        name: 'my-project',
+      })
+    ).rejects.toMatchObject({ exitCode: 130 });
+
+    expect(mocks.adapters[0].create).not.toHaveBeenCalled();
   });
 
   it('rejects unsupported package manager input before adapter execution', async () => {
@@ -175,6 +215,7 @@ describe('initCommand', () => {
     };
     mocks.selectStack.mockResolvedValue(npmAdapter);
     mocks.getDefaultDirectoryName.mockReturnValue('demo-pkg');
+    mocks.promptDirectory.mockResolvedValue('demo-pkg');
 
     await initCommand({
       name: '@scope/demo-pkg',
@@ -209,5 +250,14 @@ describe('initCommand', () => {
     expect(mocks.validateNpmPackageName).toHaveBeenCalledWith('My Express App');
     expect(mocks.validateProjectName).not.toHaveBeenCalledWith('My Express App');
     expect(expressAdapter.create).not.toHaveBeenCalled();
+  });
+
+  it('surfaces unexpected stack-selection prompt failures instead of treating them as cancellations', async () => {
+    mocks.selectStack.mockRejectedValue(new Error('prompt renderer crashed'));
+
+    await expect(initCommand({})).rejects.toBeInstanceOf(CliExitError);
+
+    expect(mocks.adapters[0].create).not.toHaveBeenCalled();
+    expect(mocks.logger.error).toHaveBeenCalledWith('Error: prompt renderer crashed');
   });
 });

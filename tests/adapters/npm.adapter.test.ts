@@ -279,6 +279,31 @@ describe.sequential('npmPackageAdapter', () => {
     expect(mocks.exec).not.toHaveBeenCalled();
   });
 
+  it('cleans up the generated project directory when dependency installation fails', async () => {
+    mocks.promptNpmPackageCustomizations.mockResolvedValue({
+      typescript: true,
+      buildTool: 'tsup',
+      eslint: false,
+      prettier: false,
+      testFramework: 'none',
+    });
+    mocks.exec.mockRejectedValueOnce(new Error('registry timeout'));
+
+    await expect(
+      npmPackageAdapter.create({
+        directory: 'demo-failed-pkg',
+        packageManager: 'npm',
+        projectName: 'demo-failed-pkg',
+        yes: true,
+      })
+    ).rejects.toThrow('registry timeout');
+
+    await expect(access(join(tempDir, 'demo-failed-pkg'))).rejects.toThrow();
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to create package: registry timeout')
+    );
+  });
+
   it('keeps generated JavaScript test files out of the published tarball', async () => {
     mocks.promptNpmPackageCustomizations.mockResolvedValue({
       typescript: false,

@@ -75,6 +75,8 @@ describe('createCommand', () => {
       description: 'test adapter',
       create: mocks.create,
     });
+    mocks.detectPackageManagerFromCwd.mockReturnValue(null);
+    mocks.promptDirectory.mockResolvedValue('demo-app');
     mocks.promptGit.mockResolvedValue(false);
     mocks.promptPackageManager.mockResolvedValue('npm');
     mocks.promptProjectName.mockResolvedValue('demo-app');
@@ -118,6 +120,18 @@ describe('createCommand', () => {
     );
   });
 
+  it('aborts when the directory prompt is cancelled', async () => {
+    mocks.promptDirectory.mockRejectedValue(new CliExitError(130));
+
+    await expect(
+      createCommand('vite', {
+        name: 'demo-app',
+      })
+    ).rejects.toMatchObject({ exitCode: 130 });
+
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
   it('uses detected package manager without prompting when available', async () => {
     mocks.detectPackageManagerFromCwd.mockReturnValue('pnpm');
 
@@ -131,6 +145,30 @@ describe('createCommand', () => {
         packageManager: 'pnpm',
       })
     );
+  });
+
+  it('aborts when the package-manager prompt is cancelled', async () => {
+    mocks.promptPackageManager.mockRejectedValue(new CliExitError(130));
+
+    await expect(
+      createCommand('vite', {
+        name: 'demo-app',
+      })
+    ).rejects.toMatchObject({ exitCode: 130 });
+
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it('aborts when the git prompt is cancelled', async () => {
+    mocks.promptGit.mockRejectedValue(new CliExitError(130));
+
+    await expect(
+      createCommand('vite', {
+        name: 'demo-app',
+      })
+    ).rejects.toMatchObject({ exitCode: 130 });
+
+    expect(mocks.create).not.toHaveBeenCalled();
   });
 
   it('rejects unsupported package managers before adapter execution', async () => {
@@ -211,5 +249,14 @@ describe('createCommand', () => {
     expect(mocks.validateNpmPackageName).toHaveBeenCalledWith('My Express App');
     expect(mocks.validateProjectName).not.toHaveBeenCalledWith('My Express App');
     expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it('surfaces unexpected project-name prompt failures instead of treating them as cancellations', async () => {
+    mocks.promptProjectName.mockRejectedValue(new Error('prompt renderer crashed'));
+
+    await expect(createCommand('vite', {})).rejects.toBeInstanceOf(CliExitError);
+
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.logger.error).toHaveBeenCalledWith('Error: prompt renderer crashed');
   });
 });

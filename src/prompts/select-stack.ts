@@ -1,7 +1,25 @@
 import { cancel, confirm, select, text } from '@clack/prompts';
 import chalk from 'chalk';
 import { APP_CONFIG } from '../config/index.js';
+import { CliExitError } from '../utils/cli-error.js';
 import { StackAdapter } from '../types/stack.js';
+
+function isPromptCancelledError(error: unknown): boolean {
+  return error instanceof Error && error.message === 'Prompt cancelled';
+}
+
+function abortPromptCancellation(): never {
+  cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
+  throw new CliExitError(130);
+}
+
+function unwrapPromptResponse<T>(response: T | symbol | undefined | null): T | undefined {
+  if (typeof response === 'symbol') {
+    throw new Error('Prompt cancelled');
+  }
+
+  return response ?? undefined;
+}
 
 export async function selectStack(adapters: StackAdapter[]): Promise<StackAdapter | null> {
   try {
@@ -14,15 +32,13 @@ export async function selectStack(adapters: StackAdapter[]): Promise<StackAdapte
       })),
     });
 
-    if (typeof response === 'symbol') {
-      cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
-      return null;
+    return unwrapPromptResponse(response) ?? null;
+  } catch (error) {
+    if (isPromptCancelledError(error)) {
+      abortPromptCancellation();
     }
 
-    return response || null;
-  } catch (error) {
-    cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
-    return null;
+    throw error;
   }
 }
 
@@ -45,15 +61,13 @@ export async function promptProjectName(
       },
     });
 
-    if (typeof response === 'symbol') {
-      cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
-      return null;
+    return unwrapPromptResponse(response) ?? null;
+  } catch (error) {
+    if (isPromptCancelledError(error)) {
+      abortPromptCancellation();
     }
 
-    return response || null;
-  } catch (error) {
-    cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
-    return null;
+    throw error;
   }
 }
 
@@ -77,15 +91,13 @@ export async function promptDirectory(
       },
     });
 
-    if (typeof response === 'symbol') {
-      cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
-      return null;
+    return unwrapPromptResponse(response) ?? null;
+  } catch (error) {
+    if (isPromptCancelledError(error)) {
+      abortPromptCancellation();
     }
 
-    return response || null;
-  } catch (error) {
-    cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
-    return null;
+    throw error;
   }
 }
 
@@ -107,15 +119,13 @@ export async function promptPackageManager(
       ],
     });
 
-    if (typeof response === 'symbol') {
-      cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
-      return null;
+    return unwrapPromptResponse(response) ?? null;
+  } catch (error) {
+    if (isPromptCancelledError(error)) {
+      abortPromptCancellation();
     }
 
-    return response || null;
-  } catch (error) {
-    cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
-    return null;
+    throw error;
   }
 }
 
@@ -130,14 +140,12 @@ export async function promptGit(options: { yes?: boolean } = {}): Promise<boolea
       initialValue: false,
     });
 
-    if (typeof response === 'symbol') {
-      cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
-      return false;
+    return unwrapPromptResponse(response) ?? false;
+  } catch (error) {
+    if (isPromptCancelledError(error)) {
+      abortPromptCancellation();
     }
 
-    return response ?? false;
-  } catch (error) {
-    cancel(chalk.cyan(APP_CONFIG.thankYouMessage));
-    return false;
+    throw error;
   }
 }
