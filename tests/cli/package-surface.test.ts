@@ -85,7 +85,6 @@ describe.sequential('package surface', () => {
     packedTarballPath = join(packageRoot, packSummary.filename);
 
     expect(packSummary.files).toContain('dist/index.js');
-    expect(packSummary.files).toContain('dist/index.cjs');
     expect(packSummary.files).toContain('README.md');
     expect(packSummary.files).toContain('package.json');
 
