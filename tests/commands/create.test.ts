@@ -206,6 +206,28 @@ describe('createCommand', () => {
     );
   });
 
+  it('rejects absolute explicit directories before adapter execution', async () => {
+    mocks.validateDirectory.mockReturnValue({
+      exists: false,
+      path: '/tmp/demo-app',
+      reason: 'Directory must be a relative path inside the current working directory',
+      valid: false,
+    });
+
+    await expect(
+      createCommand('vite', {
+        directory: '/tmp/demo-app',
+        name: 'demo-app',
+        yes: true,
+      })
+    ).rejects.toBeInstanceOf(CliExitError);
+
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'Directory must be a relative path inside the current working directory'
+    );
+  });
+
   it('uses npm package validation and derives a safe directory for scoped packages', async () => {
     mocks.getAdapterById.mockReturnValue({
       id: 'npm',

@@ -162,12 +162,55 @@ describe.sequential('viteReactAdapter', () => {
 
     expect(mocks.exec).toHaveBeenCalledWith(
       'bunx',
-      ['shadcn@latest', 'init'],
+      [
+        'shadcn@latest',
+        'init',
+        '--defaults',
+        '--yes',
+        '--template',
+        'vite',
+        '--cwd',
+        join(tempDir, 'demo-vite-bun'),
+      ],
       expect.objectContaining({
         cwd: join(tempDir, 'demo-vite-bun'),
         stdio: 'inherit',
       })
     );
+  });
+
+  it('cleans up the generated project directory when shadcn setup fails', async () => {
+    mocks.promptViteReactCustomizations.mockResolvedValue({
+      prettier: false,
+      shadcn: true,
+      tailwind: true,
+      tailwindVersion: 'v4',
+      typescript: true,
+    });
+    mocks.exec.mockImplementation(async (_command, args, options) => {
+      const projectName = args[2] as string | undefined;
+      if (projectName && options?.cwd === tempDir) {
+        const projectPath = join(tempDir, projectName);
+        await mkdir(join(projectPath, 'src'), { recursive: true });
+        await writeFile(join(projectPath, 'src', 'index.css'), 'body {}\n');
+        await writeFile(join(projectPath, 'vite.config.js'), 'export default { plugins: [] }\n');
+        return;
+      }
+
+      if (args[0] === 'shadcn@latest') {
+        throw new Error('shadcn init failed');
+      }
+    });
+
+    await expect(
+      viteReactAdapter.create({
+        directory: 'demo-vite-failed',
+        packageManager: 'npm',
+        projectName: 'demo-vite-failed',
+      })
+    ).rejects.toThrow('shadcn init failed');
+
+    await expect(access(join(tempDir, 'demo-vite-failed'))).rejects.toThrow();
   });
 
   it.each([

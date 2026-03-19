@@ -1,5 +1,5 @@
 import { spinner } from '@clack/prompts';
-import { writeFile } from 'fs/promises';
+import { rm, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { promptNextCustomizations } from '../prompts/customizations.js';
 import type { CreateOptions, StackAdapter } from '../types/stack.js';
@@ -149,29 +149,41 @@ export const nextAdapter: StackAdapter = {
       },
     };
 
+    const projectPath = join(process.cwd(), directory);
     const { cmd, args } = pmCommands[packageManager] ?? pmCommands.npm;
 
-    await exec(cmd, args, { cwd: process.cwd(), stdio: 'inherit' });
+    try {
+      await exec(cmd, args, { cwd: process.cwd(), stdio: 'inherit' });
 
-    const projectPath = join(process.cwd(), directory);
+      if (customizations.prettier) {
+        await setupPrettier(projectPath, packageManager);
+      }
 
-    if (customizations.prettier) {
-      await setupPrettier(projectPath, packageManager);
-    }
+      if (customizations.shadcn) {
+        logger.info('');
+        logger.info('Initialising shadcn/ui...');
+        const dlx = getDlxCommand(packageManager, 'shadcn@latest', [
+          'init',
+          '--defaults',
+          '--yes',
+          '--template',
+          'next',
+          '--cwd',
+          projectPath,
+        ]);
+        await exec(dlx.cmd, dlx.args, {
+          cwd: projectPath,
+          stdio: 'inherit',
+        });
+      }
 
-    if (customizations.shadcn) {
       logger.info('');
-      logger.info('Initialising shadcn/ui...');
-      const dlx = getDlxCommand(packageManager, 'shadcn@latest', ['init']);
-      await exec(dlx.cmd, dlx.args, {
-        cwd: projectPath,
-        stdio: 'inherit',
-      });
+      logger.info('Next steps:');
+      logger.info(`  cd ${directory}`);
+      logger.info(`  ${packageManager === 'npm' ? 'npm run dev' : `${packageManager} run dev`}`);
+    } catch (error) {
+      await rm(projectPath, { force: true, recursive: true });
+      throw error;
     }
-
-    logger.info('');
-    logger.info('Next steps:');
-    logger.info(`  cd ${directory}`);
-    logger.info(`  ${packageManager === 'npm' ? 'npm run dev' : `${packageManager} run dev`}`);
   },
 };

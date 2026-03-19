@@ -262,7 +262,16 @@ describe.sequential('nextAdapter', () => {
     );
     expect(mocks.exec).toHaveBeenCalledWith(
       'bunx',
-      ['shadcn@latest', 'init'],
+      [
+        'shadcn@latest',
+        'init',
+        '--defaults',
+        '--yes',
+        '--template',
+        'next',
+        '--cwd',
+        projectPath,
+      ],
       expect.objectContaining({
         cwd: projectPath,
         stdio: 'inherit',
@@ -313,11 +322,62 @@ describe.sequential('nextAdapter', () => {
     );
     expect(mocks.exec).toHaveBeenCalledWith(
       'npx',
-      ['shadcn@latest', 'init'],
+      [
+        'shadcn@latest',
+        'init',
+        '--defaults',
+        '--yes',
+        '--template',
+        'next',
+        '--cwd',
+        projectPath,
+      ],
       expect.objectContaining({
         cwd: projectPath,
         stdio: 'inherit',
       })
     );
+  });
+
+  it('cleans up the generated project directory when shadcn setup fails', async () => {
+    mocks.promptNextCustomizations.mockResolvedValue({
+      appRouter: true,
+      eslint: true,
+      prettier: false,
+      shadcn: true,
+      srcDir: true,
+      tailwind: true,
+      typescript: true,
+    });
+    mocks.exec.mockImplementation(async (_command, args, options) => {
+      const projectName =
+        args[0] === 'create-next-app@latest'
+          ? (args[1] as string)
+          : args[0] === 'create' && args[1] === 'next-app'
+            ? (args[2] as string)
+            : args[1] === 'create-next-app@latest'
+              ? (args[2] as string)
+              : undefined;
+      if (projectName && options?.cwd === tempDir) {
+        const projectPath = join(tempDir, projectName);
+        await mkdir(projectPath, { recursive: true });
+        await writeFile(join(projectPath, 'package.json'), '{}\n');
+        return;
+      }
+
+      if (args.includes('shadcn@latest')) {
+        throw new Error('shadcn init failed');
+      }
+    });
+
+    await expect(
+      nextAdapter.create({
+        directory: 'demo-next-failed',
+        packageManager: 'pnpm',
+        projectName: 'demo-next-failed',
+      })
+    ).rejects.toThrow('shadcn init failed');
+
+    await expect(access(join(tempDir, 'demo-next-failed'))).rejects.toThrow();
   });
 });

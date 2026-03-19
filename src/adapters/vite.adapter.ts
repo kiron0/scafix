@@ -1,5 +1,5 @@
 import { spinner } from '@clack/prompts';
-import { access, readFile, writeFile } from 'fs/promises';
+import { access, readFile, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { promptViteReactCustomizations } from '../prompts/customizations.js';
 import type { CreateOptions, StackAdapter } from '../types/stack.js';
@@ -235,40 +235,53 @@ export const viteReactAdapter: StackAdapter = {
       },
     };
 
-    const { cmd, args } = pmCommands[packageManager] ?? pmCommands.npm;
-    await exec(cmd, args, { cwd: process.cwd(), stdio: 'inherit' });
-
     const projectPath = join(process.cwd(), directory);
+    const { cmd, args } = pmCommands[packageManager] ?? pmCommands.npm;
 
-    let tailwindAdded = false;
-    if (customizations.tailwind) {
-      if (customizations.tailwindVersion === 'v3') {
-        await setupTailwindV3(projectPath, packageManager);
-      } else {
-        await setupTailwindV4(projectPath, packageManager);
+    try {
+      await exec(cmd, args, { cwd: process.cwd(), stdio: 'inherit' });
+
+      let tailwindAdded = false;
+      if (customizations.tailwind) {
+        if (customizations.tailwindVersion === 'v3') {
+          await setupTailwindV3(projectPath, packageManager);
+        } else {
+          await setupTailwindV4(projectPath, packageManager);
+        }
+        tailwindAdded = true;
       }
-      tailwindAdded = true;
-    }
 
-    if (customizations.prettier) {
-      await setupPrettier(projectPath, packageManager);
-    }
+      if (customizations.prettier) {
+        await setupPrettier(projectPath, packageManager);
+      }
 
-    if (tailwindAdded && customizations.shadcn) {
-      const shadcnSpinner = spinner();
-      shadcnSpinner.start('Initialising shadcn/ui...');
-      shadcnSpinner.stop();
-      const dlx = getDlxCommand(packageManager, 'shadcn@latest', ['init']);
-      await exec(dlx.cmd, dlx.args, {
-        cwd: projectPath,
-        stdio: 'inherit',
-      });
-    }
+      if (tailwindAdded && customizations.shadcn) {
+        const shadcnSpinner = spinner();
+        shadcnSpinner.start('Initialising shadcn/ui...');
+        shadcnSpinner.stop();
+        const dlx = getDlxCommand(packageManager, 'shadcn@latest', [
+          'init',
+          '--defaults',
+          '--yes',
+          '--template',
+          'vite',
+          '--cwd',
+          projectPath,
+        ]);
+        await exec(dlx.cmd, dlx.args, {
+          cwd: projectPath,
+          stdio: 'inherit',
+        });
+      }
 
-    logger.info('');
-    logger.info('Next steps:');
-    logger.info(`  cd ${directory}`);
-    logger.info(`  ${packageManager === 'npm' ? 'npm install' : `${packageManager} install`}`);
-    logger.info(`  ${packageManager === 'npm' ? 'npm run dev' : `${packageManager} run dev`}`);
+      logger.info('');
+      logger.info('Next steps:');
+      logger.info(`  cd ${directory}`);
+      logger.info(`  ${packageManager === 'npm' ? 'npm install' : `${packageManager} install`}`);
+      logger.info(`  ${packageManager === 'npm' ? 'npm run dev' : `${packageManager} run dev`}`);
+    } catch (error) {
+      await rm(projectPath, { force: true, recursive: true });
+      throw error;
+    }
   },
 };

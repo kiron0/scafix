@@ -1,5 +1,5 @@
 import { existsSync } from 'fs';
-import { join } from 'path';
+import { isAbsolute, join } from 'path';
 import validatePackageName from 'validate-npm-package-name';
 import { logger } from './logger.js';
 
@@ -28,6 +28,8 @@ const WINDOWS_RESERVED_NAMES = new Set([
   'LPT8',
   'LPT9',
 ]);
+const WINDOWS_ABSOLUTE_PATH = /^[A-Za-z]:[\\/]/;
+const UNC_PATH = /^(?:\\\\|\/\/)/;
 
 function hasTrailingDotOrSpace(value: string): boolean {
   return /[. ]$/.test(value);
@@ -128,6 +130,16 @@ export function validateDirectory(directory: string): {
   reason?: string;
 } {
   const fullPath = join(process.cwd(), directory);
+
+  if (isAbsolute(directory) || WINDOWS_ABSOLUTE_PATH.test(directory) || UNC_PATH.test(directory)) {
+    return {
+      valid: false,
+      exists: false,
+      path: fullPath,
+      reason: 'Directory must be a relative path inside the current working directory',
+    };
+  }
+
   const segments = directory.split(/[\\/]+/).filter((segment) => segment.length > 0);
 
   for (const segment of segments) {
