@@ -53,7 +53,10 @@ describe.sequential("viteReactAdapter", () => {
       const projectPath = join(tempDir, projectName);
       await mkdir(join(projectPath, "src"), { recursive: true });
       await writeFile(join(projectPath, "src", "index.css"), "body {}\n");
-      await writeFile(join(projectPath, "vite.config.js"), "export default { plugins: [] }\n");
+      await writeFile(
+        join(projectPath, "vite.config.js"),
+        "export default { plugins: [] }\n",
+      );
     });
   });
 
@@ -139,10 +142,12 @@ describe.sequential("viteReactAdapter", () => {
         stdio: "pipe",
       }),
     );
-    await expect(access(join(projectPath, ".prettierrc"))).resolves.toBeUndefined();
-    expect(await readFile(join(projectPath, "src", "index.css"), "utf8")).toContain(
-      "@tailwind base;",
-    );
+    await expect(
+      access(join(projectPath, ".prettierrc")),
+    ).resolves.toBeUndefined();
+    expect(
+      await readFile(join(projectPath, "src", "index.css"), "utf8"),
+    ).toContain("@tailwind base;");
   });
 
   it("uses the selected package manager to run shadcn for bun projects", async () => {
@@ -172,7 +177,14 @@ describe.sequential("viteReactAdapter", () => {
 
   it.each([
     {
-      args: ["create", "vite@latest", "demo-vite-npm", "--", "--template", "react-ts"],
+      args: [
+        "create",
+        "vite@latest",
+        "demo-vite-npm",
+        "--",
+        "--template",
+        "react-ts",
+      ],
       cmd: "npm",
       packageManager: "npm",
     },

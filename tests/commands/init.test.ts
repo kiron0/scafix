@@ -84,7 +84,9 @@ describe("initCommand", () => {
   });
 
   it("rejects stack-less non-interactive usage", async () => {
-    await expect(initCommand({ yes: true })).rejects.toBeInstanceOf(CliExitError);
+    await expect(initCommand({ yes: true })).rejects.toBeInstanceOf(
+      CliExitError,
+    );
 
     expect(mocks.selectStack).not.toHaveBeenCalled();
     expect(mocks.adapters[0].create).not.toHaveBeenCalled();
@@ -153,7 +155,9 @@ describe("initCommand", () => {
       name: "@scope/demo-pkg",
     });
 
-    expect(mocks.validateNpmPackageName).toHaveBeenCalledWith("@scope/demo-pkg");
+    expect(mocks.validateNpmPackageName).toHaveBeenCalledWith(
+      "@scope/demo-pkg",
+    );
     expect(npmAdapter.create).toHaveBeenCalledWith(
       expect.objectContaining({
         directory: "demo-pkg",

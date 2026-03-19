@@ -2,6 +2,9 @@ import { access, mkdtemp, readFile, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { getEslintPackages } from "../../src/utils/eslint.js";
+import { npmPackageAdapter } from "../../src/adapters/npm.adapter.js";
+import { getPackedFileNames, runGeneratedLint } from "../utils/scaffold.js";
 
 const mocks = vi.hoisted(() => ({
   exec: vi.fn(),
@@ -33,8 +36,6 @@ vi.mock("../../src/prompts/customizations.js", () => ({
 vi.mock("../../src/utils/logger.js", () => ({
   logger: mocks.logger,
 }));
-
-import { npmPackageAdapter } from "../../src/adapters/npm.adapter.js";
 
 describe.sequential("npmPackageAdapter", () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;
@@ -71,7 +72,10 @@ describe.sequential("npmPackageAdapter", () => {
     const generatedPackageJson = JSON.parse(
       await readFile(join(projectPath, "package.json"), "utf8"),
     );
-    const generatedReadme = await readFile(join(projectPath, "README.md"), "utf8");
+    const generatedReadme = await readFile(
+      join(projectPath, "README.md"),
+      "utf8",
+    );
 
     expect(generatedPackageJson.scripts.build).toContain(
       "tsc --emitDeclarationOnly",
@@ -89,14 +93,38 @@ describe.sequential("npmPackageAdapter", () => {
     expect(generatedReadme).toContain("pnpm test");
     expect(generatedReadme).toContain("pnpm publish");
     expect(generatedPackageJson.scripts.lint).toBe('eslint "src/**/*.ts"');
-
-    expect(await readFile(join(projectPath, "jest.config.cjs"), "utf8")).toContain(
-      "ts-jest/presets/default-esm",
+    expect(mocks.exec).toHaveBeenCalledWith(
+      "pnpm",
+      [
+        "add",
+        "-D",
+        "typescript",
+        "@types/node",
+        "esbuild",
+        ...getEslintPackages({ typescript: true }),
+        "jest",
+        "@types/jest",
+        "ts-jest",
+      ],
+      expect.objectContaining({
+        cwd: projectPath,
+        stdio: "inherit",
+      }),
     );
-    await expect(access(join(projectPath, ".eslintrc.cjs"))).resolves.toBeUndefined();
-    await expect(access(join(projectPath, "jest.config.cjs"))).resolves.toBeUndefined();
+
+    expect(
+      await readFile(join(projectPath, "jest.config.cjs"), "utf8"),
+    ).toContain("ts-jest/presets/default-esm");
+    await expect(
+      access(join(projectPath, ".eslintrc.cjs")),
+    ).resolves.toBeUndefined();
+    await expect(
+      access(join(projectPath, "jest.config.cjs")),
+    ).resolves.toBeUndefined();
     await expect(access(join(projectPath, ".eslintrc.js"))).rejects.toThrow();
     await expect(access(join(projectPath, "jest.config.js"))).rejects.toThrow();
+
+    runGeneratedLint(projectPath, "src/**/*.ts");
   });
 
   it("prints next steps without a redundant install command", async () => {
@@ -115,7 +143,9 @@ describe.sequential("npmPackageAdapter", () => {
       yes: true,
     });
 
-    const infoMessages = mocks.logger.info.mock.calls.map(([message]) => message);
+    const infoMessages = mocks.logger.info.mock.calls.map(
+      ([message]) => message,
+    );
 
     expect(infoMessages).toContain("  bun run build");
     expect(infoMessages).toContain("  bun run test");
@@ -177,7 +207,9 @@ describe.sequential("npmPackageAdapter", () => {
     );
 
     expect(generatedPackageJson.name).toBe("@scope/demo-pkg");
-    await expect(access(join(projectPath, "src", "index.js"))).resolves.toBeUndefined();
+    await expect(
+      access(join(projectPath, "src", "index.js")),
+    ).resolves.toBeUndefined();
   });
 
   it("installs tslib for rollup-based TypeScript packages", async () => {
@@ -236,6 +268,14 @@ describe.sequential("npmPackageAdapter", () => {
     );
 
     expect(generatedPackageJson.scripts.lint).toBe('eslint "src/**/*.js"');
+    expect(mocks.exec).toHaveBeenCalledWith(
+      "npm",
+      ["install", "--save-dev", ...getEslintPackages({ typescript: false })],
+      expect.objectContaining({
+        cwd: projectPath,
+        stdio: "inherit",
+      }),
+    );
   });
 
   it("rejects overlong npm package names before scaffolding", async () => {
@@ -250,5 +290,31 @@ describe.sequential("npmPackageAdapter", () => {
     ).rejects.toThrow("Invalid npm package name");
 
     expect(mocks.promptNpmPackageCustomizations).not.toHaveBeenCalled();
+  });
+
+  it("keeps generated JavaScript test files out of the published tarball", async () => {
+    mocks.promptNpmPackageCustomizations.mockResolvedValue({
+      typescript: false,
+      buildTool: "tsup",
+      eslint: false,
+      prettier: false,
+      testFramework: "jest",
+    });
+
+    await npmPackageAdapter.create({
+      directory: "demo-js-pack",
+      packageManager: "npm",
+      projectName: "demo-js-pack",
+      yes: true,
+    });
+
+    const projectPath = join(tempDir, "demo-js-pack");
+    const packedFiles = getPackedFileNames(
+      projectPath,
+      join(projectPath, ".npm-cache"),
+    );
+
+    expect(packedFiles).toContain("src/index.js");
+    expect(packedFiles).not.toContain("src/__tests__/index.test.js");
   });
 });

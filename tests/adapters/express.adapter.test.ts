@@ -2,6 +2,9 @@ import { access, mkdtemp, readFile, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { expressAdapter } from "../../src/adapters/express.adapter.js";
+import { getEslintPackages } from "../../src/utils/eslint.js";
+import { runGeneratedLint } from "../utils/scaffold.js";
 
 const mocks = vi.hoisted(() => ({
   exec: vi.fn(),
@@ -33,8 +36,6 @@ vi.mock("../../src/utils/logger.js", () => ({
 vi.mock("../../src/prompts/customizations.js", () => ({
   promptExpressCustomizations: mocks.promptExpressCustomizations,
 }));
-
-import { expressAdapter } from "../../src/adapters/express.adapter.js";
 
 describe.sequential("expressAdapter", () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;
@@ -74,9 +75,21 @@ describe.sequential("expressAdapter", () => {
       await readFile(join(projectPath, "package.json"), "utf8"),
     );
 
-    await expect(access(join(projectPath, ".eslintrc.cjs"))).resolves.toBeUndefined();
+    await expect(
+      access(join(projectPath, ".eslintrc.cjs")),
+    ).resolves.toBeUndefined();
     await expect(access(join(projectPath, ".eslintrc.js"))).rejects.toThrow();
     expect(generatedPackageJson.scripts.lint).toBe('eslint "src/**/*.ts"');
+    expect(mocks.exec).toHaveBeenCalledWith(
+      "npm",
+      ["install", "--save-dev", ...getEslintPackages({ typescript: true })],
+      expect.objectContaining({
+        cwd: projectPath,
+        stdio: "inherit",
+      }),
+    );
+
+    runGeneratedLint(projectPath, "src/**/*.ts");
   });
 
   it("installs TS tooling as dev dependencies and keeps JS eslint lean", async () => {
@@ -110,7 +123,7 @@ describe.sequential("expressAdapter", () => {
     );
     expect(mocks.exec).toHaveBeenCalledWith(
       "pnpm",
-      ["add", "-D", "eslint", "eslint-plugin-node"],
+      ["add", "-D", ...getEslintPackages({ typescript: false })],
       expect.objectContaining({
         cwd: join(tempDir, "demo-express-js"),
         stdio: "inherit",
@@ -129,11 +142,19 @@ describe.sequential("expressAdapter", () => {
   it.each([
     {
       pattern: "mvc",
-      paths: ["src/routes/index.ts", "src/controllers/example.ts", "src/models/example.ts"],
+      paths: [
+        "src/routes/index.ts",
+        "src/controllers/example.ts",
+        "src/models/example.ts",
+      ],
     },
     {
       pattern: "rest",
-      paths: ["src/routes/api.ts", "src/controllers/user.ts", "src/services/user.ts"],
+      paths: [
+        "src/routes/api.ts",
+        "src/controllers/user.ts",
+        "src/services/user.ts",
+      ],
     },
     {
       pattern: "layered",
@@ -148,28 +169,33 @@ describe.sequential("expressAdapter", () => {
       pattern: "simple",
       paths: ["src/routes/index.ts"],
     },
-  ])("generates the expected %s pattern structure", async ({ pattern, paths }) => {
-    mocks.promptExpressCustomizations.mockResolvedValue({
-      cors: false,
-      dotenv: true,
-      eslint: false,
-      helmet: false,
-      pattern,
-      prettier: false,
-      typescript: true,
-    });
+  ])(
+    "generates the expected %s pattern structure",
+    async ({ pattern, paths }) => {
+      mocks.promptExpressCustomizations.mockResolvedValue({
+        cors: false,
+        dotenv: true,
+        eslint: false,
+        helmet: false,
+        pattern,
+        prettier: false,
+        typescript: true,
+      });
 
-    const projectName = `demo-express-${pattern}`;
-    await expressAdapter.create({
-      directory: projectName,
-      packageManager: "npm",
-      projectName,
-      yes: true,
-    });
+      const projectName = `demo-express-${pattern}`;
+      await expressAdapter.create({
+        directory: projectName,
+        packageManager: "npm",
+        projectName,
+        yes: true,
+      });
 
-    const projectPath = join(tempDir, projectName);
-    for (const relativePath of paths) {
-      await expect(access(join(projectPath, relativePath))).resolves.toBeUndefined();
-    }
-  });
+      const projectPath = join(tempDir, projectName);
+      for (const relativePath of paths) {
+        await expect(
+          access(join(projectPath, relativePath)),
+        ).resolves.toBeUndefined();
+      }
+    },
+  );
 });

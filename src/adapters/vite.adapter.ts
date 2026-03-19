@@ -74,8 +74,7 @@ async function setupTailwindV4(
   const s = spinner();
   s.start("Installing Tailwind CSS v4...");
   try {
-    const devFlag =
-      packageManager === "npm" ? ["--save-dev"] : ["-D"];
+    const devFlag = packageManager === "npm" ? ["--save-dev"] : ["-D"];
     await exec(
       packageManager === "npm" ? "npm" : packageManager,
       [
@@ -115,8 +114,7 @@ async function setupTailwindV3(
   const s = spinner();
   s.start("Installing Tailwind CSS v3...");
   try {
-    const devFlag =
-      packageManager === "npm" ? ["--save-dev"] : ["-D"];
+    const devFlag = packageManager === "npm" ? ["--save-dev"] : ["-D"];
     await exec(
       packageManager === "npm" ? "npm" : packageManager,
       [
@@ -193,7 +191,10 @@ async function setupPrettier(
 }
 `,
     );
-    await writeFile(join(projectPath, ".prettierignore"), "dist\nnode_modules\n");
+    await writeFile(
+      join(projectPath, ".prettierignore"),
+      "dist\nnode_modules\n",
+    );
 
     s.stop("Prettier configured");
   } catch (error) {
@@ -240,7 +241,14 @@ export const viteReactAdapter: StackAdapter = {
     const pmCommands: Record<string, { cmd: string; args: string[] }> = {
       npm: {
         cmd: "npm",
-        args: ["create", "vite@latest", directory, "--", "--template", template],
+        args: [
+          "create",
+          "vite@latest",
+          directory,
+          "--",
+          "--template",
+          template,
+        ],
       },
       pnpm: {
         cmd: "pnpm",

@@ -65,7 +65,8 @@ export async function createCommand(
 
     // Prompt for directory
     const hasExplicitDirectory =
-      typeof options.directory === "string" && options.directory.trim().length > 0;
+      typeof options.directory === "string" &&
+      options.directory.trim().length > 0;
     const defaultDirectory = getDefaultDirectoryName(projectName);
     let directory = hasExplicitDirectory
       ? (options.directory as string)

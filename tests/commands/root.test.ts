@@ -35,7 +35,9 @@ describe("rootCommand", () => {
   });
 
   it("rejects non-interactive root usage without an explicit stack", async () => {
-    await expect(rootCommand({ yes: true })).rejects.toBeInstanceOf(CliExitError);
+    await expect(rootCommand({ yes: true })).rejects.toBeInstanceOf(
+      CliExitError,
+    );
     expect(mocks.initCommand).not.toHaveBeenCalled();
     expect(mocks.logger.error).toHaveBeenCalledWith(
       "Non-interactive usage requires an explicit stack: use `scafix create <stack> --yes`.",

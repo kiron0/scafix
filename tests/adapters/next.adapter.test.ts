@@ -50,9 +50,9 @@ describe.sequential("nextAdapter", () => {
           ? (args[1] as string)
           : args[0] === "create" && args[1] === "next-app"
             ? (args[2] as string)
-          : args[1] === "create-next-app@latest"
-            ? (args[2] as string)
-            : undefined;
+            : args[1] === "create-next-app@latest"
+              ? (args[2] as string)
+              : undefined;
       if (!projectName || options?.cwd !== tempDir) {
         return;
       }
@@ -268,7 +268,9 @@ describe.sequential("nextAdapter", () => {
         stdio: "inherit",
       }),
     );
-    await expect(access(join(projectPath, ".prettierrc"))).resolves.toBeUndefined();
+    await expect(
+      access(join(projectPath, ".prettierrc")),
+    ).resolves.toBeUndefined();
   });
 
   it("uses yarn classic commands for Next.js scaffolding and follow-up tooling", async () => {

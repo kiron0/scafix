@@ -10,17 +10,13 @@
   "scripts": {
     "start": "node dist/index.js",
     "build": "tsup",
-    "build:watch": "tsup --watch",
     "format": "prettier --write \"**/*.{js,json,ts,md}\"",
-    "push": "git add . && git commit -m 'chore: push changes' && git push",
-    "smoke": "tsup && node dist/index.js",
     "test": "vitest run",
-    "test:unit": "vitest run",
     "test:smoke": "node scripts/run-network-smoke.mjs"
   },
   "keywords": [
     "cli",
-    "Scafix",
+    "scafix",
     "scaffolding",
     "project-generator",
     "universal-scaffolder"
@@ -34,7 +30,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/kiron0/scafix.git"
+    "url": "https://github.com/kiron0/scafix"
   },
   "homepage": "https://scafix.js.org",
   "dependencies": {
@@ -45,7 +41,10 @@
     "validate-npm-package-name": "^7.0.2"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.57.1",
+    "@typescript-eslint/parser": "^8.57.1",
     "@types/node": "^25.5.0",
+    "eslint": "^8.57.1",
     "prettier": "^3.8.1",
     "terser": "^5.46.1",
     "tsup": "^8.5.1",

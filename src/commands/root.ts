@@ -15,7 +15,9 @@ export async function rootCommand(options: CliOptions = {}): Promise<void> {
   }
 
   if (process.stdin.isTTY) {
-    p.intro(chalk.cyan.bold(`${APP_CONFIG.displayName} CLI v${APP_CONFIG.version}`));
+    p.intro(
+      chalk.cyan.bold(`${APP_CONFIG.displayName} CLI v${APP_CONFIG.version}`),
+    );
     p.note(APP_CONFIG.description, "About");
   }
 

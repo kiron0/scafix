@@ -162,8 +162,12 @@ describe("createCommand", () => {
       yes: true,
     });
 
-    expect(mocks.validateNpmPackageName).toHaveBeenCalledWith("@scope/demo-pkg");
-    expect(mocks.validateProjectName).not.toHaveBeenCalledWith("@scope/demo-pkg");
+    expect(mocks.validateNpmPackageName).toHaveBeenCalledWith(
+      "@scope/demo-pkg",
+    );
+    expect(mocks.validateProjectName).not.toHaveBeenCalledWith(
+      "@scope/demo-pkg",
+    );
     expect(mocks.create).toHaveBeenCalledWith(
       expect.objectContaining({
         directory: "demo-pkg",

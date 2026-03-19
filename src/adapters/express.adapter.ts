@@ -5,6 +5,7 @@ import type { ExpressCustomizations } from "../prompts/customizations.js";
 import { promptExpressCustomizations } from "../prompts/customizations.js";
 import type { CreateOptions, StackAdapter } from "../types/stack.js";
 import { exec } from "../utils/exec.js";
+import { getEslintPackages } from "../utils/eslint.js";
 import { logger } from "../utils/logger.js";
 import {
   detectPackageManager,
@@ -71,7 +72,7 @@ async function generateMVCStructure(
   if (customizations.dotenv) indexContent += `\nimport 'dotenv/config'`;
   if (customizations.cors) indexContent += `\nimport cors from 'cors'`;
   if (customizations.helmet) indexContent += `\nimport helmet from 'helmet'`;
-  indexContent += `\nimport routes from './routes/index'`;
+  indexContent += `\nimport routes from './routes/index.js'`;
 
   indexContent += `\n\nconst app = express()
 const port = process.env.PORT || 3000
@@ -92,7 +93,7 @@ app.listen(port, () => {
 
   // Generate routes/index
   const routesContent = `import { Router } from 'express'
-import exampleRoutes from './example'
+import exampleRoutes from './example.js'
 
 const router = Router()
 
@@ -104,7 +105,7 @@ export default router
 
   // Generate example route
   const exampleRouteContent = `import { Router } from 'express'
-import * as exampleController from '../controllers/example'
+import * as exampleController from '../controllers/example.js'
 
 const router = Router()
 
@@ -123,7 +124,7 @@ export default router
 
   // Generate controller
   const controllerContent = `import { Request, Response } from 'express'
-import * as exampleModel from '../models/example'
+import * as exampleModel from '../models/example.js'
 
 export const getAll = async (req: Request, res: Response) => {
   try {
@@ -240,7 +241,7 @@ async function generateRESTStructure(
   if (customizations.dotenv) indexContent += `\nimport 'dotenv/config'`;
   if (customizations.cors) indexContent += `\nimport cors from 'cors'`;
   if (customizations.helmet) indexContent += `\nimport helmet from 'helmet'`;
-  indexContent += `\nimport apiRoutes from './routes/api'`;
+  indexContent += `\nimport apiRoutes from './routes/api.js'`;
 
   indexContent += `\n\nconst app = express()
 const port = process.env.PORT || 3000
@@ -261,7 +262,7 @@ app.listen(port, () => {
 
   // Generate API routes
   const apiRoutesContent = `import { Router } from 'express'
-import userRoutes from './users'
+import userRoutes from './users.js'
 
 const router = Router()
 
@@ -273,7 +274,7 @@ export default router
 
   // Generate user routes
   const userRoutesContent = `import { Router } from 'express'
-import * as userController from '../controllers/user'
+import * as userController from '../controllers/user.js'
 
 const router = Router()
 
@@ -289,7 +290,7 @@ export default router
 
   // Generate controller
   const controllerContent = `import { Request, Response } from 'express'
-import * as userService from '../services/user'
+import * as userService from '../services/user.js'
 
 export const getUsers = async (req: Request, res: Response) => {
   try {
@@ -405,7 +406,7 @@ async function generateLayeredStructure(
   if (customizations.dotenv) indexContent += `\nimport 'dotenv/config'`;
   if (customizations.cors) indexContent += `\nimport cors from 'cors'`;
   if (customizations.helmet) indexContent += `\nimport helmet from 'helmet'`;
-  indexContent += `\nimport routes from './presentation/routes'`;
+  indexContent += `\nimport routes from './presentation/routes.js'`;
 
   indexContent += `\n\nconst app = express()
 const port = process.env.PORT || 3000
@@ -426,7 +427,7 @@ app.listen(port, () => {
 
   // Generate presentation layer (routes)
   const routesContent = `import { Router } from 'express'
-import * as productController from './controllers/product'
+import * as productController from './controllers/product.js'
 
 const router = Router()
 
@@ -445,7 +446,7 @@ export default router
 
   // Generate controller
   const controllerContent = `import { Request, Response } from 'express'
-import * as productService from '../business/product'
+import * as productService from '../business/product.js'
 
 export const getProducts = async (req: Request, res: Response) => {
   try {
@@ -517,7 +518,7 @@ export const deleteProduct = async (req: Request, res: Response) => {
   );
 
   // Generate business layer
-  const businessContent = `import * as productRepository from '../data/product'
+  const businessContent = `import * as productRepository from '../data/product.js'
 
 export const getAllProducts = async () => {
   return await productRepository.findAll()
@@ -593,7 +594,7 @@ async function generateSimpleStructure(
   if (customizations.dotenv) indexContent += `\nimport 'dotenv/config'`;
   if (customizations.cors) indexContent += `\nimport cors from 'cors'`;
   if (customizations.helmet) indexContent += `\nimport helmet from 'helmet'`;
-  indexContent += `\nimport routes from './routes/index'`;
+  indexContent += `\nimport routes from './routes/index.js'`;
 
   indexContent += `\n\nconst app = express()
 const port = process.env.PORT || 3000
@@ -760,7 +761,12 @@ dist
       const devDependencies: string[] = [];
 
       if (customizations.typescript) {
-        devDependencies.push("tsx", "@types/express", "@types/node", "typescript");
+        devDependencies.push(
+          "tsx",
+          "@types/express",
+          "@types/node",
+          "typescript",
+        );
       }
 
       if (customizations.dotenv) {
@@ -812,14 +818,9 @@ dist
         const eslintSpinner = spinner();
         eslintSpinner.start("Setting up ESLint...");
         try {
-          const eslintPackages = customizations.typescript
-            ? [
-                "eslint",
-                "@typescript-eslint/parser",
-                "@typescript-eslint/eslint-plugin",
-                "eslint-plugin-node",
-              ]
-            : ["eslint", "eslint-plugin-node"];
+          const eslintPackages = getEslintPackages({
+            typescript: customizations.typescript,
+          });
           const eslintArgs = getDependencyInstallArgs(
             packageManager,
             eslintPackages,
@@ -836,7 +837,6 @@ dist
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
-    'plugin:node/recommended',
   ],
   parserOptions: {
     ecmaVersion: 2022,
@@ -846,15 +846,27 @@ dist
     node: true,
     es2022: true,
   },
-  rules: {},
+  rules: {
+    '@typescript-eslint/no-explicit-any': 'off',
+    '@typescript-eslint/no-unused-vars': [
+      'error',
+      { args: 'none', caughtErrors: 'none' },
+    ],
+  },
 };`
             : `module.exports = {
-  extends: ['eslint:recommended', 'plugin:node/recommended'],
+  extends: ['eslint:recommended'],
   env: {
     node: true,
     es2022: true,
   },
-  rules: {},
+  parserOptions: {
+    ecmaVersion: 2022,
+    sourceType: 'module',
+  },
+  rules: {
+    'no-unused-vars': ['error', { args: 'none', caughtErrors: 'none' }],
+  },
 };`;
 
           await writeFile(join(projectPath, ".eslintrc.cjs"), eslintConfig);

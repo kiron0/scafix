@@ -37,7 +37,10 @@ async function setupPrettier(
 }
 `,
     );
-    await writeFile(join(projectPath, ".prettierignore"), ".next\nnode_modules\n");
+    await writeFile(
+      join(projectPath, ".prettierignore"),
+      ".next\nnode_modules\n",
+    );
 
     s.stop("Prettier configured");
   } catch (error) {

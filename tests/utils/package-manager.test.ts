@@ -102,10 +102,13 @@ describe("getDlxCommand", () => {
 });
 
 describe("package manager validation", () => {
-  it.each(packageManagers)("recognizes %s as a supported package manager", (pm) => {
-    expect(isPackageManager(pm)).toBe(true);
-    expect(resolvePackageManagerOption(pm)).toBe(pm);
-  });
+  it.each(packageManagers)(
+    "recognizes %s as a supported package manager",
+    (pm) => {
+      expect(isPackageManager(pm)).toBe(true);
+      expect(resolvePackageManagerOption(pm)).toBe(pm);
+    },
+  );
 
   it("rejects unsupported package managers", () => {
     expect(isPackageManager("pip")).toBe(false);

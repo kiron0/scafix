@@ -63,7 +63,8 @@ export async function initCommand(options: CliOptions = {}): Promise<void> {
 
     // Prompt for directory only when it is not already provided.
     const hasExplicitDirectory =
-      typeof options.directory === "string" && options.directory.trim().length > 0;
+      typeof options.directory === "string" &&
+      options.directory.trim().length > 0;
     const defaultDirectory = getDefaultDirectoryName(projectName);
     let directory = hasExplicitDirectory
       ? (options.directory as string)

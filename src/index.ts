@@ -41,10 +41,7 @@ program
   .argument("[stack]", "Stack ID (vite, next, express, npm)")
   .option("-n, --name <name>", "Project name")
   .option("-d, --directory <dir>", "Project directory")
-  .option(
-    "--package-manager <pm>",
-    "Package manager (npm, pnpm, yarn, bun)",
-  )
+  .option("--package-manager <pm>", "Package manager (npm, pnpm, yarn, bun)")
   .option("--git", "Initialize Git repository")
   .option("-y, --yes", "Accept defaults without prompts")
   .option("--debug", "Enable debug output")
@@ -67,10 +64,7 @@ program
   .description("Initialize a new project interactively")
   .option("-n, --name <name>", "Project name")
   .option("-d, --directory <dir>", "Project directory")
-  .option(
-    "--package-manager <pm>",
-    "Package manager (npm, pnpm, yarn, bun)",
-  )
+  .option("--package-manager <pm>", "Package manager (npm, pnpm, yarn, bun)")
   .option("--git", "Initialize Git repository")
   .option("--debug", "Enable debug output")
   .action(async (options) => {

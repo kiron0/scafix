@@ -44,8 +44,12 @@ describeIf.sequential("external CLI smoke", () => {
       });
 
       const projectPath = join(tempDir, projectName);
-      await expect(access(join(projectPath, "package.json"))).resolves.toBeUndefined();
-      await expect(access(join(projectPath, "src", "main.tsx"))).resolves.toBeUndefined();
+      await expect(
+        access(join(projectPath, "package.json")),
+      ).resolves.toBeUndefined();
+      await expect(
+        access(join(projectPath, "src", "main.tsx")),
+      ).resolves.toBeUndefined();
 
       const packageJson = JSON.parse(
         await readFile(join(projectPath, "package.json"), "utf8"),
@@ -66,8 +70,12 @@ describeIf.sequential("external CLI smoke", () => {
       });
 
       const projectPath = join(tempDir, projectName);
-      await expect(access(join(projectPath, "package.json"))).resolves.toBeUndefined();
-      await expect(access(join(projectPath, "src", "app", "page.tsx"))).resolves.toBeUndefined();
+      await expect(
+        access(join(projectPath, "package.json")),
+      ).resolves.toBeUndefined();
+      await expect(
+        access(join(projectPath, "src", "app", "page.tsx")),
+      ).resolves.toBeUndefined();
 
       const packageJson = JSON.parse(
         await readFile(join(projectPath, "package.json"), "utf8"),

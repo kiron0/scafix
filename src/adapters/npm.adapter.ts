@@ -4,6 +4,7 @@ import { join } from "path";
 import { promptNpmPackageCustomizations } from "../prompts/customizations.js";
 import type { CreateOptions, StackAdapter } from "../types/stack.js";
 import { exec } from "../utils/exec.js";
+import { getEslintPackages } from "../utils/eslint.js";
 import { logger } from "../utils/logger.js";
 import {
   getAddCommand,
@@ -26,7 +27,8 @@ export const npmPackageAdapter: StackAdapter = {
   async create(options: CreateOptions): Promise<void> {
     const { projectName, packageManager = "npm" } = options;
     const directory =
-      typeof options.directory === "string" && options.directory.trim().length > 0
+      typeof options.directory === "string" &&
+      options.directory.trim().length > 0
         ? options.directory
         : getDefaultDirectoryName(projectName);
 
@@ -63,7 +65,14 @@ export const npmPackageAdapter: StackAdapter = {
         version: "0.0.1",
         description: "",
         type: "module",
-        files: customizations.typescript ? ["dist"] : ["src"],
+        files: customizations.typescript
+          ? ["dist"]
+          : [
+              "src",
+              `!src/**/*.test.${ext}`,
+              `!src/**/*.spec.${ext}`,
+              "!src/**/__tests__/**",
+            ],
         scripts: {},
         keywords: [],
         author: "",
@@ -327,10 +336,20 @@ coverage
       await writeFile(join(projectPath, ".gitignore"), gitignore);
 
       // Create .npmignore
-      const npmignore = `src
-*.test.${ext}
-*.spec.${ext}
+      const npmignore = customizations.typescript
+        ? `src
+**/*.test.${ext}
+**/*.spec.${ext}
+**/__tests__/**
 tsconfig.json
+.gitignore
+.env
+coverage
+.nyc_output
+`
+        : `**/*.test.${ext}
+**/*.spec.${ext}
+**/__tests__/**
 .gitignore
 .env
 coverage
@@ -366,13 +385,9 @@ coverage
       }
 
       if (customizations.eslint) {
-        devDependencies.push("eslint");
-        if (customizations.typescript) {
-          devDependencies.push(
-            "@typescript-eslint/parser",
-            "@typescript-eslint/eslint-plugin",
-          );
-        }
+        devDependencies.push(
+          ...getEslintPackages({ typescript: customizations.typescript }),
+        );
       }
 
       if (customizations.prettier) {

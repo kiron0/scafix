@@ -104,7 +104,6 @@ export async function promptViteReactCustomizations(
         throw new Error("Prompt cancelled");
       }
       customizations.shadcn = shadcnResponse ?? false;
-
     }
 
     // Prettier
@@ -188,7 +187,6 @@ export async function promptNextCustomizations(
         throw new Error("Prompt cancelled");
       }
       customizations.shadcn = shadcnResponse ?? false;
-
     }
 
     // ESLint

@@ -52,7 +52,9 @@ describeIf.sequential("package manager install smoke", () => {
       });
 
       const projectPath = join(tempDir, projectName);
-      await expect(access(join(projectPath, "package.json"))).resolves.toBeUndefined();
+      await expect(
+        access(join(projectPath, "package.json")),
+      ).resolves.toBeUndefined();
 
       const packageJson = JSON.parse(
         await readFile(join(projectPath, "package.json"), "utf8"),
