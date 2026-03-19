@@ -9,9 +9,6 @@ on:
 jobs:
   package:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: package
     steps:
       - uses: actions/checkout@v4
 
