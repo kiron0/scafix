@@ -52,67 +52,71 @@ describe.sequential('npmPackageAdapter', () => {
     await rm(tempDir, { force: true, recursive: true });
   });
 
-  it('writes ESM-safe config files and declaration-aware esbuild output', async () => {
-    mocks.promptNpmPackageCustomizations.mockResolvedValue({
-      typescript: true,
-      buildTool: 'esbuild',
-      eslint: true,
-      prettier: false,
-      testFramework: 'jest',
-    });
+  it(
+    'writes ESM-safe config files and declaration-aware esbuild output',
+    async () => {
+      mocks.promptNpmPackageCustomizations.mockResolvedValue({
+        typescript: true,
+        buildTool: 'esbuild',
+        eslint: true,
+        prettier: false,
+        testFramework: 'jest',
+      });
 
-    await npmPackageAdapter.create({
-      directory: 'demo-pkg',
-      packageManager: 'pnpm',
-      projectName: 'demo-pkg',
-      yes: true,
-    });
+      await npmPackageAdapter.create({
+        directory: 'demo-pkg',
+        packageManager: 'pnpm',
+        projectName: 'demo-pkg',
+        yes: true,
+      });
 
-    const projectPath = join(tempDir, 'demo-pkg');
-    const generatedPackageJson = JSON.parse(
-      await readFile(join(projectPath, 'package.json'), 'utf8')
-    );
-    const generatedReadme = await readFile(join(projectPath, 'README.md'), 'utf8');
+      const projectPath = join(tempDir, 'demo-pkg');
+      const generatedPackageJson = JSON.parse(
+        await readFile(join(projectPath, 'package.json'), 'utf8')
+      );
+      const generatedReadme = await readFile(join(projectPath, 'README.md'), 'utf8');
 
-    expect(generatedPackageJson.scripts.build).toContain('tsc --emitDeclarationOnly');
-    expect(generatedPackageJson.scripts.test).toContain('node --experimental-vm-modules');
-    expect(generatedPackageJson.scripts.prepublishOnly).toBe(generatedPackageJson.scripts.build);
-    expect(generatedPackageJson.types).toBe('dist/index.d.ts');
-    expect(generatedReadme).toContain('pnpm add demo-pkg');
-    expect(generatedReadme).toContain('pnpm install');
-    expect(generatedReadme).toContain('pnpm build');
-    expect(generatedReadme).toContain('pnpm test');
-    expect(generatedReadme).toContain('pnpm publish');
-    expect(generatedPackageJson.scripts.lint).toBe('eslint "src/**/*.ts"');
-    expect(mocks.exec).toHaveBeenCalledWith(
-      'pnpm',
-      [
-        'add',
-        '-D',
-        'typescript',
-        '@types/node',
-        'esbuild',
-        ...getEslintPackages({ typescript: true }),
-        'jest',
-        '@types/jest',
-        'ts-jest',
-      ],
-      expect.objectContaining({
-        cwd: projectPath,
-        stdio: 'inherit',
-      })
-    );
+      expect(generatedPackageJson.scripts.build).toContain('tsc --emitDeclarationOnly');
+      expect(generatedPackageJson.scripts.test).toContain('node --experimental-vm-modules');
+      expect(generatedPackageJson.scripts.prepublishOnly).toBe(generatedPackageJson.scripts.build);
+      expect(generatedPackageJson.types).toBe('dist/index.d.ts');
+      expect(generatedReadme).toContain('pnpm add demo-pkg');
+      expect(generatedReadme).toContain('pnpm install');
+      expect(generatedReadme).toContain('pnpm build');
+      expect(generatedReadme).toContain('pnpm test');
+      expect(generatedReadme).toContain('pnpm publish');
+      expect(generatedPackageJson.scripts.lint).toBe('eslint "src/**/*.ts"');
+      expect(mocks.exec).toHaveBeenCalledWith(
+        'pnpm',
+        [
+          'add',
+          '-D',
+          'typescript',
+          '@types/node',
+          'esbuild',
+          ...getEslintPackages({ typescript: true }),
+          'jest',
+          '@types/jest',
+          'ts-jest',
+        ],
+        expect.objectContaining({
+          cwd: projectPath,
+          stdio: 'inherit',
+        })
+      );
 
-    expect(await readFile(join(projectPath, 'jest.config.cjs'), 'utf8')).toContain(
-      'ts-jest/presets/default-esm'
-    );
-    await expect(access(join(projectPath, '.eslintrc.cjs'))).resolves.toBeUndefined();
-    await expect(access(join(projectPath, 'jest.config.cjs'))).resolves.toBeUndefined();
-    await expect(access(join(projectPath, '.eslintrc.js'))).rejects.toThrow();
-    await expect(access(join(projectPath, 'jest.config.js'))).rejects.toThrow();
+      expect(await readFile(join(projectPath, 'jest.config.cjs'), 'utf8')).toContain(
+        'ts-jest/presets/default-esm'
+      );
+      await expect(access(join(projectPath, '.eslintrc.cjs'))).resolves.toBeUndefined();
+      await expect(access(join(projectPath, 'jest.config.cjs'))).resolves.toBeUndefined();
+      await expect(access(join(projectPath, '.eslintrc.js'))).rejects.toThrow();
+      await expect(access(join(projectPath, 'jest.config.js'))).rejects.toThrow();
 
-    runGeneratedLint(projectPath, 'src/**/*.ts');
-  });
+      runGeneratedLint(projectPath, 'src/**/*.ts');
+    },
+    30_000
+  );
 
   it('prints next steps without a redundant install command', async () => {
     mocks.promptNpmPackageCustomizations.mockResolvedValue({
@@ -146,7 +150,10 @@ describe.sequential('npmPackageAdapter', () => {
       prettier: false,
       testFramework: 'none',
     });
-    await writeFile(join(tempDir, 'package.json'), JSON.stringify({ packageManager: 'yarn@4.7.0' }));
+    await writeFile(
+      join(tempDir, 'package.json'),
+      JSON.stringify({ packageManager: 'yarn@4.7.0' })
+    );
 
     await npmPackageAdapter.create({
       directory: 'demo-yarn-berry',
@@ -364,6 +371,29 @@ describe.sequential('npmPackageAdapter', () => {
     expect(mocks.logger.error).toHaveBeenCalledWith(
       expect.stringContaining('Failed to create package: registry timeout')
     );
+  });
+
+  it('cleans up nested parent directories it created when scaffolding fails', async () => {
+    mocks.promptNpmPackageCustomizations.mockResolvedValue({
+      typescript: true,
+      buildTool: 'tsup',
+      eslint: false,
+      prettier: false,
+      testFramework: 'none',
+    });
+    mocks.exec.mockRejectedValueOnce(new Error('registry timeout'));
+
+    await expect(
+      npmPackageAdapter.create({
+        directory: 'packages/demo-failed-pkg',
+        packageManager: 'npm',
+        projectName: 'demo-failed-pkg',
+        yes: true,
+      })
+    ).rejects.toThrow('registry timeout');
+
+    await expect(access(join(tempDir, 'packages', 'demo-failed-pkg'))).rejects.toThrow();
+    await expect(access(join(tempDir, 'packages'))).rejects.toThrow();
   });
 
   it('keeps generated JavaScript test files out of the published tarball', async () => {

@@ -2,6 +2,7 @@ export interface CreateOptions {
   projectName: string;
   directory?: string;
   packageManager?: 'npm' | 'pnpm' | 'yarn' | 'bun';
+  yes?: boolean;
   typescript?: boolean;
   eslint?: boolean;
   prettier?: boolean;
@@ -9,13 +10,14 @@ export interface CreateOptions {
   [key: string]: unknown; // Allow stack-specific options
 }
 
+export type StackCategory = 'frontend' | 'backend' | 'library' | 'mobile' | 'desktop' | 'fullstack';
+
 export interface StackAdapter {
   id: string;
   name: string;
   description: string;
-  backend?: boolean;
+  category: StackCategory;
 
-  detect?: () => boolean;
   create(options: CreateOptions): Promise<void>;
 }
 

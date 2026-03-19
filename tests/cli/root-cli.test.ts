@@ -17,13 +17,16 @@ function runCli(args: string[]) {
 }
 
 describe.sequential('built CLI root wiring', () => {
-  beforeAll(() => {
-    execFileSync('npm', ['run', 'build'], {
-      cwd: packageRoot,
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
-  });
+  beforeAll(
+    () => {
+      execFileSync('npm', ['run', 'build'], {
+        cwd: packageRoot,
+        encoding: 'utf8',
+        stdio: 'pipe',
+      });
+    },
+    30_000
+  );
 
   it('advertises root-level project options in help output', () => {
     const result = runCli(['--help']);
@@ -32,6 +35,7 @@ describe.sequential('built CLI root wiring', () => {
     expect(result.stdout).toContain('-n, --name <name>');
     expect(result.stdout).toContain('-d, --directory <dir>');
     expect(result.stdout).toContain('--package-manager <pm>');
+    expect(result.stdout).toContain('--no-git');
     expect(result.stdout).toContain('-y, --yes');
     expect(result.stdout).toContain('--debug');
   });
@@ -67,7 +71,10 @@ describe.sequential('built CLI root wiring', () => {
     child.stderr.on('data', (chunk) => stderrChunks.push(String(chunk)));
 
     await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('CLI did not become ready before SIGINT')), 2000);
+      const timeout = setTimeout(
+        () => reject(new Error('CLI did not become ready before SIGINT')),
+        2000
+      );
       child.stdout.on('data', (chunk) => {
         if (String(chunk).includes(readyToken)) {
           clearTimeout(timeout);

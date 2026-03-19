@@ -70,6 +70,7 @@ describe('select-stack prompt cancellations', () => {
         description: 'test adapter',
         id: 'vite',
         name: 'Vite',
+        category: 'frontend',
       },
     ]);
 
@@ -98,6 +99,7 @@ describe('select-stack prompt cancellations', () => {
         description: 'test adapter',
         id: 'vite',
         name: 'Vite',
+        category: 'frontend',
       },
     ]);
 

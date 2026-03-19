@@ -7,6 +7,12 @@ import { detectPackageManager } from '../../src/utils/package-manager.js';
 import { runGeneratedCommand } from '../utils/scaffold.js';
 
 const describeIf = process.env.SCAFIX_RUN_NETWORK_SMOKE === '1' ? describe : describe.skip;
+const requestedPackageManagers = new Set(
+  (process.env.SCAFIX_SMOKE_PACKAGE_MANAGERS ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => ['npm', 'pnpm', 'yarn', 'bun'].includes(value))
+);
 
 const packageManagers = [
   {
@@ -25,7 +31,9 @@ const packageManagers = [
     expectedLockfiles: ['bun.lock', 'bun.lockb'],
     value: 'bun',
   },
-] as const;
+].filter(
+  (entry) => requestedPackageManagers.size === 0 || requestedPackageManagers.has(entry.value)
+) as const;
 
 describeIf.sequential('package manager install smoke', () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;

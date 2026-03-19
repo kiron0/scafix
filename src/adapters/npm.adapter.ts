@@ -1,8 +1,12 @@
 import { spinner } from '@clack/prompts';
-import { mkdir, rm, writeFile } from 'fs/promises';
+import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import type { NpmPackageCustomizations } from '../prompts/customizations.js';
 import { promptNpmPackageCustomizations } from '../prompts/customizations.js';
+import {
+  cleanupFailedScaffold,
+  createMissingParentDirectories,
+} from './shared/scaffold.js';
 import type { CreateOptions, StackAdapter } from '../types/stack.js';
 import { exec } from '../utils/exec.js';
 import { getEslintPackages } from '../utils/eslint.js';
@@ -24,7 +28,9 @@ function resolveBooleanOverride(value: unknown): boolean | undefined {
   return typeof value === 'boolean' ? value : undefined;
 }
 
-function resolveBuildToolOverride(value: unknown): NpmPackageCustomizations['buildTool'] | undefined {
+function resolveBuildToolOverride(
+  value: unknown
+): NpmPackageCustomizations['buildTool'] | undefined {
   return value === 'tsup' || value === 'rollup' || value === 'esbuild' || value === 'none'
     ? value
     : undefined;
@@ -60,11 +66,44 @@ function applyCustomizationOverrides(
   };
 }
 
+type PackageJsonFile = {
+  name: string;
+  version: string;
+  description: string;
+  type: 'module';
+  files: string[];
+  scripts: Record<string, string>;
+  keywords: string[];
+  author: string;
+  license: string;
+  repository: {
+    type: string;
+    url: string;
+  };
+  main?: string;
+  module?: string;
+  types?: string;
+  exports?: Record<
+    string,
+    {
+      import?: string;
+      require?: string;
+      types?: string;
+    }
+  >;
+};
+
+type TsConfigFile = {
+  compilerOptions: Record<string, unknown>;
+  include: string[];
+  exclude: string[];
+};
+
 export const npmPackageAdapter: StackAdapter = {
   id: 'npm',
   name: 'NPM Package',
   description: 'NPM package ready for publishing (JavaScript or TypeScript)',
-  backend: false,
+  category: 'library',
 
   async create(options: CreateOptions): Promise<void> {
     const { projectName, packageManager = 'npm' } = options;
@@ -106,10 +145,13 @@ export const npmPackageAdapter: StackAdapter = {
     );
 
     let createdProjectDirectory = false;
+    let createdParentDirectories: string[] = [];
 
     try {
+      createdParentDirectories = await createMissingParentDirectories(projectPath);
+
       // Create project directory
-      await mkdir(projectPath, { recursive: true });
+      await mkdir(projectPath);
       createdProjectDirectory = true;
 
       // Create src directory
@@ -118,7 +160,7 @@ export const npmPackageAdapter: StackAdapter = {
       const ext = customizations.typescript ? 'ts' : 'js';
 
       // Create package.json
-      const packageJson: any = {
+      const packageJson: PackageJsonFile = {
         name: projectName,
         version: '0.0.1',
         description: '',
@@ -210,7 +252,7 @@ export const npmPackageAdapter: StackAdapter = {
 
       // Create TypeScript config if needed
       if (customizations.typescript) {
-        const tsconfig: any = {
+        const tsconfig: TsConfigFile = {
           compilerOptions: {
             target: 'ES2022',
             module: 'ES2022',
@@ -648,7 +690,7 @@ module.exports = {
     } catch (error) {
       if (createdProjectDirectory) {
         try {
-          await rm(projectPath, { force: true, recursive: true });
+          await cleanupFailedScaffold(projectPath, createdParentDirectories);
         } catch (cleanupError) {
           logger.warn(
             `Failed to clean up ${directory}: ${

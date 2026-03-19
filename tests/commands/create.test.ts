@@ -128,6 +128,40 @@ describe('createCommand', () => {
     );
   });
 
+  it('defaults git initialization to true in --yes mode', async () => {
+    await createCommand('vite', {
+      name: 'demo-app',
+      yes: true,
+    });
+
+    expect(mocks.promptGit).not.toHaveBeenCalled();
+    expect(mocks.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        git: true,
+      })
+    );
+    expect(mocks.exec).toHaveBeenCalledWith('git', ['init'], {
+      cwd: expect.stringContaining('/demo-app'),
+      stdio: 'pipe',
+    });
+  });
+
+  it('allows --no-git to override the --yes git default', async () => {
+    await createCommand('vite', {
+      git: false,
+      name: 'demo-app',
+      yes: true,
+    });
+
+    expect(mocks.promptGit).not.toHaveBeenCalled();
+    expect(mocks.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        git: false,
+      })
+    );
+    expect(mocks.exec).not.toHaveBeenCalled();
+  });
+
   it('aborts when the directory prompt is cancelled', async () => {
     mocks.promptDirectory.mockRejectedValue(new CliExitError(130));
 
@@ -137,6 +171,15 @@ describe('createCommand', () => {
       })
     ).rejects.toMatchObject({ exitCode: 130 });
 
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it('returns early when the project-name prompt is cancelled', async () => {
+    mocks.promptProjectName.mockResolvedValue(null);
+
+    await createCommand('vite', {});
+
+    expect(mocks.promptDirectory).not.toHaveBeenCalled();
     expect(mocks.create).not.toHaveBeenCalled();
   });
 

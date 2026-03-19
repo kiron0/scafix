@@ -1,6 +1,6 @@
 import { spinner } from '@clack/prompts';
 import { join } from 'path';
-import { getAdapterById } from '../adapters/index.js';
+import { AVAILABLE_STACK_IDS_LABEL, getAdapterById } from '../adapters/index.js';
 import {
   promptDirectory,
   promptGit,
@@ -43,28 +43,35 @@ export async function createCommand(
     // If no stack ID provided, we'll handle it in interactive mode
     if (!stackId) {
       logger.error('Stack ID is required. Use: scafix create <stack>');
-      logger.info('Available stacks: vite, next, express, npm');
+      logger.info(`Available stacks: ${AVAILABLE_STACK_IDS_LABEL}`);
       throw new CliExitError(1);
     }
 
     const adapter = getAdapterById(stackId);
     if (!adapter) {
       logger.error(`Unknown stack: ${stackId}`);
-      logger.info('Available stacks: vite, next, express, npm');
+      logger.info(`Available stacks: ${AVAILABLE_STACK_IDS_LABEL}`);
       throw new CliExitError(1);
     }
 
     // Prompt for project name if not provided
-    let projectName = (options.name || options.projectName) as string | undefined;
+    const explicitProjectName =
+      typeof options.name === 'string'
+        ? options.name
+        : typeof options.projectName === 'string'
+          ? options.projectName
+          : undefined;
+    let projectName: string | undefined = explicitProjectName;
     if (!projectName) {
       ensureInteractiveTty();
-      projectName = (await promptProjectName({
+      const projectNameResponse = await promptProjectName({
         yes: options.yes,
         default: 'my-project',
-      })) as string;
-      if (!projectName) {
+      });
+      if (!projectNameResponse) {
         return;
       }
+      projectName = projectNameResponse;
     }
 
     const isValidProjectName = requiresNpmSafeProjectName(stackId)
@@ -75,10 +82,13 @@ export async function createCommand(
     }
 
     // Prompt for directory
-    const hasExplicitDirectory =
-      typeof options.directory === 'string' && options.directory.trim().length > 0;
+    const explicitDirectory =
+      typeof options.directory === 'string' && options.directory.trim().length > 0
+        ? options.directory.trim()
+        : undefined;
+    const hasExplicitDirectory = explicitDirectory !== undefined;
     const defaultDirectory = getDefaultDirectoryName(projectName);
-    let directory = hasExplicitDirectory ? (options.directory as string) : defaultDirectory;
+    let directory = explicitDirectory ?? defaultDirectory;
     if (!hasExplicitDirectory && !options.yes) {
       ensureInteractiveTty();
       const dirResponse = await promptDirectory(defaultDirectory, {
@@ -135,6 +145,8 @@ export async function createCommand(
     let git = false;
     if (options.git !== undefined) {
       git = Boolean(options.git);
+    } else if (options.yes) {
+      git = true;
     } else if (!options.yes) {
       ensureInteractiveTty();
       git = await promptGit({ yes: options.yes });

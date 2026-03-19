@@ -59,7 +59,10 @@ describe.sequential('nextAdapter', () => {
 
       const projectPath = join(tempDir, projectName);
       await mkdir(projectPath, { recursive: true });
-      await writeFile(join(projectPath, 'package.json'), `${JSON.stringify({ name: projectName }, null, 2)}\n`);
+      await writeFile(
+        join(projectPath, 'package.json'),
+        `${JSON.stringify({ name: projectName }, null, 2)}\n`
+      );
     });
   });
 
@@ -268,16 +271,7 @@ describe.sequential('nextAdapter', () => {
     );
     expect(mocks.exec).toHaveBeenCalledWith(
       'bunx',
-      [
-        'shadcn@latest',
-        'init',
-        '--defaults',
-        '--yes',
-        '--template',
-        'next',
-        '--cwd',
-        projectPath,
-      ],
+      ['shadcn@latest', 'init', '--defaults', '--yes', '--template', 'next', '--cwd', projectPath],
       expect.objectContaining({
         cwd: projectPath,
         stdio: 'inherit',
@@ -395,7 +389,10 @@ describe.sequential('nextAdapter', () => {
       if (projectName && options?.cwd === tempDir) {
         const projectPath = join(tempDir, projectName);
         await mkdir(projectPath, { recursive: true });
-        await writeFile(join(projectPath, 'package.json'), `${JSON.stringify({ name: projectName }, null, 2)}\n`);
+        await writeFile(
+          join(projectPath, 'package.json'),
+          `${JSON.stringify({ name: projectName }, null, 2)}\n`
+        );
         return;
       }
 
@@ -415,7 +412,7 @@ describe.sequential('nextAdapter', () => {
     await expect(access(join(tempDir, 'demo-next-failed'))).rejects.toThrow();
   });
 
-  it('keeps create-next-app git initialisation enabled only when git is explicitly requested', async () => {
+  it('always disables create-next-app git initialisation so root commands remain the single git owner', async () => {
     mocks.promptNextCustomizations.mockResolvedValue({
       appRouter: true,
       eslint: true,
@@ -446,17 +443,13 @@ describe.sequential('nextAdapter', () => {
         '--import-alias',
         '@/*',
         '--use-npm',
+        '--disable-git',
         '--yes',
       ],
       expect.objectContaining({
         cwd: tempDir,
         stdio: 'inherit',
       })
-    );
-    expect(mocks.exec).not.toHaveBeenCalledWith(
-      'npx',
-      expect.arrayContaining(['--disable-git']),
-      expect.anything()
     );
   });
 

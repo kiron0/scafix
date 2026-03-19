@@ -24,9 +24,14 @@ vi.mock('../../src/utils/logger.js', () => ({
 }));
 
 import {
+  promptAstroCustomizations,
   promptExpressCustomizations,
+  promptHonoCustomizations,
+  promptNestCustomizations,
   promptNextCustomizations,
+  promptNuxtCustomizations,
   promptNpmPackageCustomizations,
+  promptSvelteKitCustomizations,
   promptViteReactCustomizations,
 } from '../../src/prompts/customizations.js';
 
@@ -92,6 +97,109 @@ describe('promptNextCustomizations', () => {
     });
     await expect(result).rejects.toBeInstanceOf(CliExitError);
     expect(mocks.cancel).toHaveBeenCalledWith(expect.stringContaining(APP_CONFIG.thankYouMessage));
+  });
+});
+
+describe('promptAstroCustomizations', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns deterministic defaults in --yes mode', async () => {
+    const result = await promptAstroCustomizations({ yes: true });
+    expect(result.template).toBe('minimal');
+  });
+
+  it('aborts cleanly when the template selection is cancelled', async () => {
+    mocks.select.mockResolvedValue(promptCancelled);
+
+    const result = promptAstroCustomizations();
+
+    await expect(result).rejects.toBeInstanceOf(CliExitError);
+    await expect(result).rejects.toMatchObject({ exitCode: 130 });
+  });
+});
+
+describe('promptSvelteKitCustomizations', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns deterministic defaults in --yes mode', async () => {
+    const result = await promptSvelteKitCustomizations({ yes: true });
+    expect(result.template).toBe('minimal');
+    expect(result.types).toBe('ts');
+  });
+
+  it('aborts cleanly when the type selection is cancelled', async () => {
+    mocks.select.mockResolvedValueOnce('minimal').mockResolvedValueOnce(promptCancelled);
+
+    const result = promptSvelteKitCustomizations();
+
+    await expect(result).rejects.toBeInstanceOf(CliExitError);
+    await expect(result).rejects.toMatchObject({ exitCode: 130 });
+  });
+});
+
+describe('promptNuxtCustomizations', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns deterministic defaults in --yes mode', async () => {
+    const result = await promptNuxtCustomizations({ yes: true });
+    expect(result.template).toBe('minimal');
+  });
+
+  it('aborts cleanly when the template selection is cancelled', async () => {
+    mocks.select.mockResolvedValue(promptCancelled);
+
+    const result = promptNuxtCustomizations();
+
+    await expect(result).rejects.toBeInstanceOf(CliExitError);
+    await expect(result).rejects.toMatchObject({ exitCode: 130 });
+  });
+});
+
+describe('promptNestCustomizations', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns deterministic defaults in --yes mode', async () => {
+    const result = await promptNestCustomizations({ yes: true });
+    expect(result.language).toBe('ts');
+    expect(result.strict).toBe(true);
+  });
+
+  it('aborts cleanly when strict mode confirmation is cancelled', async () => {
+    mocks.select.mockResolvedValueOnce('ts');
+    mocks.confirm.mockResolvedValueOnce(promptCancelled);
+
+    const result = promptNestCustomizations();
+
+    await expect(result).rejects.toBeInstanceOf(CliExitError);
+    await expect(result).rejects.toMatchObject({ exitCode: 130 });
+  });
+});
+
+describe('promptHonoCustomizations', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns deterministic defaults in --yes mode', async () => {
+    const result = await promptHonoCustomizations({ yes: true });
+    expect(result.template).toBe('nodejs');
+  });
+
+  it('aborts cleanly when the runtime selection is cancelled', async () => {
+    mocks.select.mockResolvedValue(promptCancelled);
+
+    const result = promptHonoCustomizations();
+
+    await expect(result).rejects.toBeInstanceOf(CliExitError);
+    await expect(result).rejects.toMatchObject({ exitCode: 130 });
   });
 });
 

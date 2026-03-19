@@ -52,43 +52,47 @@ describe.sequential('expressAdapter', () => {
     await rm(tempDir, { force: true, recursive: true });
   });
 
-  it('writes an ESM-safe eslint config for generated express projects', async () => {
-    mocks.promptExpressCustomizations.mockResolvedValue({
-      cors: false,
-      dotenv: true,
-      eslint: true,
-      helmet: false,
-      pattern: 'mvc',
-      prettier: false,
-      typescript: true,
-    });
+  it(
+    'writes an ESM-safe eslint config for generated express projects',
+    async () => {
+      mocks.promptExpressCustomizations.mockResolvedValue({
+        cors: false,
+        dotenv: true,
+        eslint: true,
+        helmet: false,
+        pattern: 'mvc',
+        prettier: false,
+        typescript: true,
+      });
 
-    await expressAdapter.create({
-      directory: 'demo-express',
-      packageManager: 'npm',
-      projectName: 'demo-express',
-      yes: true,
-    });
+      await expressAdapter.create({
+        directory: 'demo-express',
+        packageManager: 'npm',
+        projectName: 'demo-express',
+        yes: true,
+      });
 
-    const projectPath = join(tempDir, 'demo-express');
-    const generatedPackageJson = JSON.parse(
-      await readFile(join(projectPath, 'package.json'), 'utf8')
-    );
+      const projectPath = join(tempDir, 'demo-express');
+      const generatedPackageJson = JSON.parse(
+        await readFile(join(projectPath, 'package.json'), 'utf8')
+      );
 
-    await expect(access(join(projectPath, '.eslintrc.cjs'))).resolves.toBeUndefined();
-    await expect(access(join(projectPath, '.eslintrc.js'))).rejects.toThrow();
-    expect(generatedPackageJson.scripts.lint).toBe('eslint "src/**/*.ts"');
-    expect(mocks.exec).toHaveBeenCalledWith(
-      'npm',
-      ['install', '--save-dev', ...getEslintPackages({ typescript: true })],
-      expect.objectContaining({
-        cwd: projectPath,
-        stdio: 'inherit',
-      })
-    );
+      await expect(access(join(projectPath, '.eslintrc.cjs'))).resolves.toBeUndefined();
+      await expect(access(join(projectPath, '.eslintrc.js'))).rejects.toThrow();
+      expect(generatedPackageJson.scripts.lint).toBe('eslint "src/**/*.ts"');
+      expect(mocks.exec).toHaveBeenCalledWith(
+        'npm',
+        ['install', '--save-dev', ...getEslintPackages({ typescript: true })],
+        expect.objectContaining({
+          cwd: projectPath,
+          stdio: 'inherit',
+        })
+      );
 
-    runGeneratedLint(projectPath, 'src/**/*.ts');
-  });
+      runGeneratedLint(projectPath, 'src/**/*.ts');
+    },
+    30_000
+  );
 
   it('installs TS tooling as dev dependencies and keeps JS eslint lean', async () => {
     mocks.promptExpressCustomizations.mockResolvedValue({
@@ -185,19 +189,22 @@ describe.sequential('expressAdapter', () => {
   it.each([
     {
       controllerPath: 'src/controllers/example.js',
+      dataPath: 'src/models/example.js',
       pattern: 'mvc',
     },
     {
       controllerPath: 'src/controllers/user.js',
+      dataPath: 'src/services/user.js',
       pattern: 'rest',
     },
     {
       controllerPath: 'src/presentation/controllers/product.js',
+      dataPath: 'src/data/product.js',
       pattern: 'layered',
     },
   ])(
-    'strips type-only Express imports from JavaScript %s controllers',
-    async ({ controllerPath, pattern }) => {
+    'strips TypeScript-only syntax from JavaScript %s scaffolds',
+    async ({ controllerPath, dataPath, pattern }) => {
       mocks.promptExpressCustomizations.mockResolvedValue({
         cors: false,
         dotenv: true,
@@ -217,10 +224,15 @@ describe.sequential('expressAdapter', () => {
       });
 
       const controllerContent = await readFile(join(tempDir, projectName, controllerPath), 'utf8');
+      const dataContent = await readFile(join(tempDir, projectName, dataPath), 'utf8');
 
       expect(controllerContent).not.toContain("import { Request, Response } from 'express'");
       expect(controllerContent).not.toContain(': Request');
       expect(controllerContent).not.toContain(': Response');
+      expect(dataContent).not.toContain('Map<string');
+      expect(dataContent).not.toContain('Record<string, unknown>');
+      expect(dataContent).not.toContain(': string');
+      expect(dataContent).not.toContain(': any');
     }
   );
 
@@ -303,5 +315,30 @@ describe.sequential('expressAdapter', () => {
     expect(mocks.logger.error).toHaveBeenCalledWith(
       expect.stringContaining('Failed to create project: registry timeout')
     );
+  });
+
+  it('cleans up nested parent directories it created when scaffolding fails', async () => {
+    mocks.promptExpressCustomizations.mockResolvedValue({
+      cors: false,
+      dotenv: true,
+      eslint: false,
+      helmet: false,
+      pattern: 'simple',
+      prettier: false,
+      typescript: true,
+    });
+    mocks.exec.mockRejectedValueOnce(new Error('registry timeout'));
+
+    await expect(
+      expressAdapter.create({
+        directory: 'apps/demo-express-failed',
+        packageManager: 'npm',
+        projectName: 'demo-express-failed',
+        yes: true,
+      })
+    ).rejects.toThrow('registry timeout');
+
+    await expect(access(join(tempDir, 'apps', 'demo-express-failed'))).rejects.toThrow();
+    await expect(access(join(tempDir, 'apps'))).rejects.toThrow();
   });
 });

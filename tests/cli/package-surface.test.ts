@@ -44,13 +44,16 @@ function extractPackedFile(relativePath: string): string {
 }
 
 describe.sequential('package surface', () => {
-  beforeAll(() => {
-    execFileSync('npm', ['run', 'build'], {
-      cwd: packageRoot,
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
-  });
+  beforeAll(
+    () => {
+      execFileSync('npm', ['run', 'build'], {
+        cwd: packageRoot,
+        encoding: 'utf8',
+        stdio: 'pipe',
+      });
+    },
+    30_000
+  );
 
   afterEach(async () => {
     if (packedTarballPath) {
@@ -71,6 +74,10 @@ describe.sequential('package surface', () => {
     expect(readme).toContain(
       'npx scafix create next --name dashboard --yes --package-manager pnpm'
     );
+    expect(readme).toContain('npx scafix create sveltekit');
+    expect(readme).toContain('npx scafix create nuxt --name content-site --package-manager pnpm');
+    expect(readme).toContain('npx scafix create nest --name api-core --package-manager pnpm');
+    expect(readme).toContain('npx scafix create hono --directory services/edge-api');
   });
 
   it('packs an executable, documented CLI surface', () => {
@@ -93,5 +100,11 @@ describe.sequential('package surface', () => {
     expect(packedReadme).toContain(
       'npx scafix --name my-app --directory apps/my-app --package-manager pnpm'
     );
+    expect(packedReadme).toContain('npx scafix create sveltekit');
+    expect(packedReadme).toContain(
+      'npx scafix create nuxt --name content-site --package-manager pnpm'
+    );
+    expect(packedReadme).toContain('npx scafix create nest --name api-core --package-manager pnpm');
+    expect(packedReadme).toContain('npx scafix create hono --directory services/edge-api');
   });
 });

@@ -34,6 +34,11 @@ npx scafix create <stack>
 
 # Examples
 npx scafix --name api-starter --directory services/api
+npx scafix create astro
+npx scafix create sveltekit
+npx scafix create nuxt --name content-site --package-manager pnpm
+npx scafix create nest --name api-core --package-manager pnpm
+npx scafix create hono --directory services/edge-api
 npx scafix create vite
 npx scafix create vite --name web-app --package-manager bun
 npx scafix create next --name dashboard --yes --package-manager pnpm

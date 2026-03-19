@@ -54,7 +54,10 @@ describe.sequential('viteReactAdapter', () => {
       await mkdir(join(projectPath, 'src'), { recursive: true });
       await writeFile(join(projectPath, 'src', 'index.css'), 'body {}\n');
       await writeFile(join(projectPath, 'vite.config.js'), 'export default { plugins: [] }\n');
-      await writeFile(join(projectPath, 'package.json'), `${JSON.stringify({ name: projectName }, null, 2)}\n`);
+      await writeFile(
+        join(projectPath, 'package.json'),
+        `${JSON.stringify({ name: projectName }, null, 2)}\n`
+      );
     });
   });
 
@@ -241,7 +244,10 @@ describe.sequential('viteReactAdapter', () => {
         await mkdir(join(projectPath, 'src'), { recursive: true });
         await writeFile(join(projectPath, 'src', 'index.css'), 'body {}\n');
         await writeFile(join(projectPath, 'vite.config.js'), 'export default { plugins: [] }\n');
-        await writeFile(join(projectPath, 'package.json'), `${JSON.stringify({ name: projectName }, null, 2)}\n`);
+        await writeFile(
+          join(projectPath, 'package.json'),
+          `${JSON.stringify({ name: projectName }, null, 2)}\n`
+        );
         return;
       }
 

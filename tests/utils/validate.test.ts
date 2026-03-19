@@ -93,19 +93,25 @@ describe('validateDirectory', () => {
   it('returns invalid for absolute POSIX-style paths', () => {
     const result = validateDirectory('/tmp/demo-app');
     expect(result.valid).toBe(false);
-    expect(result.reason).toBe('Directory must be a relative path inside the current working directory');
+    expect(result.reason).toBe(
+      'Directory must be a relative path inside the current working directory'
+    );
   });
 
   it('returns invalid for absolute Windows-style paths', () => {
     const result = validateDirectory('C:/tmp/demo-app');
     expect(result.valid).toBe(false);
-    expect(result.reason).toBe('Directory must be a relative path inside the current working directory');
+    expect(result.reason).toBe(
+      'Directory must be a relative path inside the current working directory'
+    );
   });
 
   it('returns invalid for UNC-style paths', () => {
     const result = validateDirectory('\\\\server\\share\\demo-app');
     expect(result.valid).toBe(false);
-    expect(result.reason).toBe('Directory must be a relative path inside the current working directory');
+    expect(result.reason).toBe(
+      'Directory must be a relative path inside the current working directory'
+    );
   });
 });
 

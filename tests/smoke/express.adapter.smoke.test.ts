@@ -18,7 +18,11 @@ function runPackageScript(projectPath: string, script: string) {
 function runNodeModuleImport(projectPath: string, modulePath: string) {
   return spawnSync(
     process.execPath,
-    ['--input-type=module', '-e', `import(${JSON.stringify(modulePath)}).then(() => process.exit(0))`],
+    [
+      '--input-type=module',
+      '-e',
+      `import(${JSON.stringify(modulePath)}).then(() => process.exit(0))`,
+    ],
     {
       cwd: projectPath,
       encoding: 'utf8',
@@ -92,25 +96,46 @@ describeIf.sequential('express adapter smoke', () => {
     expect(buildResult.status).toBe(0);
   }, 300000);
 
-  it('loads a JavaScript rest-pattern controller without runtime import errors', async () => {
-    const projectName = 'smoke-express-rest-js';
-
-    await expressAdapter.create({
-      directory: projectName,
-      dotenv: true,
-      eslint: true,
-      packageManager: 'npm',
+  it.each([
+    {
+      modulePath: './src/models/example.js',
+      pattern: 'mvc',
+      projectName: 'smoke-express-mvc-js',
+      sourcePath: ['src', 'models', 'example.js'],
+    },
+    {
+      modulePath: './src/controllers/user.js',
       pattern: 'rest',
-      prettier: false,
-      projectName,
-      typescript: false,
-      yes: true,
-    });
+      projectName: 'smoke-express-rest-js',
+      sourcePath: ['src', 'controllers', 'user.js'],
+    },
+    {
+      modulePath: './src/presentation/controllers/product.js',
+      pattern: 'layered',
+      projectName: 'smoke-express-layered-js',
+      sourcePath: ['src', 'presentation', 'controllers', 'product.js'],
+    },
+  ])(
+    'loads the JavaScript $pattern pattern scaffold without runtime import errors',
+    async ({ modulePath, pattern, projectName, sourcePath }) => {
+      await expressAdapter.create({
+        directory: projectName,
+        dotenv: true,
+        eslint: true,
+        packageManager: 'npm',
+        pattern,
+        prettier: false,
+        projectName,
+        typescript: false,
+        yes: true,
+      });
 
-    const projectPath = join(tempDir, projectName);
-    await expect(access(join(projectPath, 'src', 'controllers', 'user.js'))).resolves.toBeUndefined();
+      const projectPath = join(tempDir, projectName);
+      await expect(access(join(projectPath, ...sourcePath))).resolves.toBeUndefined();
 
-    const importResult = runNodeModuleImport(projectPath, './src/controllers/user.js');
-    expect(importResult.status).toBe(0);
-  }, 300000);
+      const importResult = runNodeModuleImport(projectPath, modulePath);
+      expect(importResult.status).toBe(0);
+    },
+    300000
+  );
 });

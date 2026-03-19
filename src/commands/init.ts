@@ -56,15 +56,22 @@ export async function initCommand(options: CliOptions = {}): Promise<void> {
     logger.info('');
 
     // Prompt for project name only when it is not already provided.
-    let projectName = (options.name || options.projectName) as string | undefined;
+    const explicitProjectName =
+      typeof options.name === 'string'
+        ? options.name
+        : typeof options.projectName === 'string'
+          ? options.projectName
+          : undefined;
+    let projectName: string | undefined = explicitProjectName;
     if (!projectName) {
-      projectName = await promptProjectName({
+      const projectNameResponse = await promptProjectName({
         yes: options.yes,
         default: 'my-project',
       });
-    }
-    if (!projectName) {
-      return;
+      if (!projectNameResponse) {
+        return;
+      }
+      projectName = projectNameResponse;
     }
 
     const isValidProjectName = requiresNpmSafeProjectName(adapter.id)
@@ -75,10 +82,13 @@ export async function initCommand(options: CliOptions = {}): Promise<void> {
     }
 
     // Prompt for directory only when it is not already provided.
-    const hasExplicitDirectory =
-      typeof options.directory === 'string' && options.directory.trim().length > 0;
+    const explicitDirectory =
+      typeof options.directory === 'string' && options.directory.trim().length > 0
+        ? options.directory.trim()
+        : undefined;
+    const hasExplicitDirectory = explicitDirectory !== undefined;
     const defaultDirectory = getDefaultDirectoryName(projectName);
-    let directory = hasExplicitDirectory ? (options.directory as string) : defaultDirectory;
+    let directory = explicitDirectory ?? defaultDirectory;
     if (!hasExplicitDirectory && !options.yes) {
       const dirResponse = await promptDirectory(defaultDirectory, {
         yes: options.yes,
@@ -91,6 +101,11 @@ export async function initCommand(options: CliOptions = {}): Promise<void> {
     const dirInfo = validateDirectory(directory);
     if (!dirInfo.valid) {
       logger.error(dirInfo.reason ?? `Invalid directory: ${directory}`);
+      throw new CliExitError(1);
+    }
+    if (dirInfo.exists) {
+      logger.warn(`The directory "${directory}" already exists.`);
+      logger.info(`Please choose a different project name or remove the existing directory.`);
       throw new CliExitError(1);
     }
 

@@ -26,7 +26,7 @@ export async function selectStack(adapters: StackAdapter[]): Promise<StackAdapte
     const response = await select({
       message: 'Select a stack:',
       options: adapters.map((adapter) => ({
-        label: `${adapter.name}${adapter.backend ? ' (Backend)' : ''}`,
+        label: `${adapter.name}${adapter.category !== 'frontend' ? ` (${adapter.category.charAt(0).toUpperCase() + adapter.category.slice(1)})` : ''}`,
         hint: adapter.description,
         value: adapter,
       })),
@@ -131,7 +131,7 @@ export async function promptPackageManager(
 
 export async function promptGit(options: { yes?: boolean } = {}): Promise<boolean> {
   if (options.yes) {
-    return false;
+    return true;
   }
 
   try {

@@ -68,8 +68,9 @@ function detectPackageManagerInDirectory(directory: string): PackageManager | nu
 
 function findNearestPackageManager(directory: string): PackageManager | null {
   let currentDir = resolve(directory);
+  let reachedFilesystemRoot = false;
 
-  while (true) {
+  while (!reachedFilesystemRoot) {
     const packageManager = detectPackageManagerInDirectory(currentDir);
     if (packageManager) {
       return packageManager;
@@ -77,9 +78,10 @@ function findNearestPackageManager(directory: string): PackageManager | null {
 
     const parentDir = dirname(currentDir);
     if (parentDir === currentDir) {
-      break;
+      reachedFilesystemRoot = true;
+    } else {
+      currentDir = parentDir;
     }
-    currentDir = parentDir;
   }
 
   return null;
@@ -166,8 +168,9 @@ function detectYarnFlavorFromExecutable(): YarnFlavor {
 
 export function detectYarnFlavor(directory: string = process.cwd()): YarnFlavor {
   let currentDir = resolve(directory);
+  let reachedFilesystemRoot = false;
 
-  while (true) {
+  while (!reachedFilesystemRoot) {
     if (
       existsSync(join(currentDir, '.yarnrc.yml')) ||
       existsSync(join(currentDir, '.pnp.cjs')) ||
@@ -185,7 +188,9 @@ export function detectYarnFlavor(directory: string = process.cwd()): YarnFlavor 
         };
         if (typeof packageJson.packageManager === 'string') {
           const managerName = parsePackageManagerField(packageJson.packageManager);
-          const version = packageJson.packageManager.slice(packageJson.packageManager.indexOf('@') + 1);
+          const version = packageJson.packageManager.slice(
+            packageJson.packageManager.indexOf('@') + 1
+          );
           if (managerName === 'yarn') {
             const major = version ? parseYarnMajorVersion(version) : null;
             return major !== null && major >= 2 ? 'berry' : 'classic';
@@ -198,9 +203,10 @@ export function detectYarnFlavor(directory: string = process.cwd()): YarnFlavor 
 
     const parentDir = dirname(currentDir);
     if (parentDir === currentDir) {
-      break;
+      reachedFilesystemRoot = true;
+    } else {
+      currentDir = parentDir;
     }
-    currentDir = parentDir;
   }
 
   return detectYarnFlavorFromExecutable();

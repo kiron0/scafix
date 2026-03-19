@@ -213,14 +213,10 @@ async function installProjectDependencies(
   const s = spinner();
   s.start('Installing dependencies...');
   try {
-    await exec(
-      packageManager === 'npm' ? 'npm' : packageManager,
-      ['install'],
-      {
-        cwd: projectPath,
-        stdio: 'inherit',
-      }
-    );
+    await exec(packageManager === 'npm' ? 'npm' : packageManager, ['install'], {
+      cwd: projectPath,
+      stdio: 'inherit',
+    });
     s.stop('Dependencies installed');
   } catch (error) {
     s.stop('Failed to install dependencies');
@@ -232,7 +228,7 @@ export const viteReactAdapter: StackAdapter = {
   id: 'vite',
   name: 'Vite',
   description: 'Scaffold any Vite project via the official create-vite CLI',
-  backend: false,
+  category: 'frontend',
 
   async create(options: CreateOptions): Promise<void> {
     const { projectName, directory = projectName, packageManager = 'npm' } = options;
@@ -306,18 +302,15 @@ export const viteReactAdapter: StackAdapter = {
         shadcnSpinner.start('Initialising shadcn/ui...');
         shadcnSpinner.stop();
         const yarnFlavor = packageManager === 'yarn' ? detectYarnFlavor(projectPath) : undefined;
-        const dlx = getDlxCommand(packageManager, 'shadcn@latest', [
-          'init',
-          '--defaults',
-          '--yes',
-          '--template',
-          'vite',
-          '--cwd',
-          projectPath,
-        ], {
-          directory: projectPath,
-          yarnFlavor,
-        });
+        const dlx = getDlxCommand(
+          packageManager,
+          'shadcn@latest',
+          ['init', '--defaults', '--yes', '--template', 'vite', '--cwd', projectPath],
+          {
+            directory: projectPath,
+            yarnFlavor,
+          }
+        );
         await exec(dlx.cmd, dlx.args, {
           cwd: projectPath,
           stdio: 'inherit',

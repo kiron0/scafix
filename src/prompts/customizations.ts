@@ -22,6 +22,28 @@ export interface NextCustomizations {
   srcDir: boolean;
 }
 
+export interface AstroCustomizations {
+  template: 'minimal' | 'blog' | 'docs';
+}
+
+export interface SvelteKitCustomizations {
+  template: 'minimal' | 'demo' | 'library';
+  types: 'ts' | 'jsdoc';
+}
+
+export interface NuxtCustomizations {
+  template: 'minimal' | 'content' | 'ui';
+}
+
+export interface NestCustomizations {
+  language: 'ts' | 'js';
+  strict: boolean;
+}
+
+export interface HonoCustomizations {
+  template: 'nodejs' | 'bun' | 'cloudflare-workers' | 'vercel';
+}
+
 export interface ExpressCustomizations {
   typescript: boolean;
   pattern: 'mvc' | 'rest' | 'layered' | 'simple';
@@ -38,6 +60,41 @@ export interface NpmPackageCustomizations {
   eslint: boolean;
   prettier: boolean;
   testFramework: 'vitest' | 'jest' | 'none';
+}
+
+export interface ExpoCustomizations {
+  template: 'default' | 'blank' | 'tabs' | 'bare-minimum';
+}
+
+export interface RemixCustomizations {
+  template: 'remix' | 'grunge-stack' | 'blues-stack' | 'indie-stack';
+}
+
+export interface FastifyCustomizations {
+  language: 'ts' | 'js';
+}
+
+export interface TauriCustomizations {
+  template:
+    | 'vanilla'
+    | 'vanilla-ts'
+    | 'react'
+    | 'react-ts'
+    | 'vue'
+    | 'vue-ts'
+    | 'svelte'
+    | 'svelte-ts';
+}
+
+export interface T3Customizations {
+  packages: string[];
+  appRouter: boolean;
+}
+
+export interface AngularCustomizations {
+  style: 'css' | 'scss' | 'less';
+  ssr: boolean;
+  routing: boolean;
 }
 
 function isPromptCancelledError(error: unknown): boolean {
@@ -213,6 +270,183 @@ export async function promptNextCustomizations(
     customizations.srcDir = unwrapPromptResponse(srcDirResponse) ?? true;
 
     return customizations;
+  } catch (error) {
+    if (isPromptCancelledError(error)) {
+      abortCustomizationPrompt(error);
+    }
+
+    throw error;
+  }
+}
+
+export async function promptAstroCustomizations(
+  options: { yes?: boolean } = {}
+): Promise<AstroCustomizations> {
+  if (options.yes) {
+    return {
+      template: 'minimal',
+    };
+  }
+
+  try {
+    const templateResponse = await select({
+      message: 'Select Astro template:',
+      options: [
+        { label: 'Minimal', hint: 'Smallest Astro starter', value: 'minimal' },
+        { label: 'Blog', hint: 'Content-focused starter', value: 'blog' },
+        { label: 'Docs', hint: 'Documentation-focused starter', value: 'docs' },
+      ],
+    });
+
+    return {
+      template:
+        (unwrapPromptResponse(templateResponse) as AstroCustomizations['template']) ?? 'minimal',
+    };
+  } catch (error) {
+    if (isPromptCancelledError(error)) {
+      abortCustomizationPrompt(error);
+    }
+
+    throw error;
+  }
+}
+
+export async function promptSvelteKitCustomizations(
+  options: { yes?: boolean } = {}
+): Promise<SvelteKitCustomizations> {
+  if (options.yes) {
+    return {
+      template: 'minimal',
+      types: 'ts',
+    };
+  }
+
+  try {
+    const templateResponse = await select({
+      message: 'Select SvelteKit template:',
+      options: [
+        { label: 'Minimal', hint: 'Smallest app starter', value: 'minimal' },
+        { label: 'Demo', hint: 'Feature-rich demo app', value: 'demo' },
+        { label: 'Library', hint: 'Reusable package starter', value: 'library' },
+      ],
+    });
+
+    const typesResponse = await select({
+      message: 'Type checking mode:',
+      options: [
+        { label: 'TypeScript', value: 'ts' },
+        { label: 'JSDoc / CheckJS', value: 'jsdoc' },
+      ],
+    });
+
+    return {
+      template:
+        (unwrapPromptResponse(templateResponse) as SvelteKitCustomizations['template']) ??
+        'minimal',
+      types: (unwrapPromptResponse(typesResponse) as SvelteKitCustomizations['types']) ?? 'ts',
+    };
+  } catch (error) {
+    if (isPromptCancelledError(error)) {
+      abortCustomizationPrompt(error);
+    }
+
+    throw error;
+  }
+}
+
+export async function promptNuxtCustomizations(
+  options: { yes?: boolean } = {}
+): Promise<NuxtCustomizations> {
+  if (options.yes) {
+    return {
+      template: 'minimal',
+    };
+  }
+
+  try {
+    const templateResponse = await select({
+      message: 'Select Nuxt template:',
+      options: [
+        { label: 'Minimal', hint: 'Lean Nuxt 4 starter', value: 'minimal' },
+        { label: 'Content', hint: 'Content-driven website starter', value: 'content' },
+        { label: 'UI', hint: 'Nuxt UI starter', value: 'ui' },
+      ],
+    });
+
+    return {
+      template:
+        (unwrapPromptResponse(templateResponse) as NuxtCustomizations['template']) ?? 'minimal',
+    };
+  } catch (error) {
+    if (isPromptCancelledError(error)) {
+      abortCustomizationPrompt(error);
+    }
+
+    throw error;
+  }
+}
+
+export async function promptNestCustomizations(
+  options: { yes?: boolean } = {}
+): Promise<NestCustomizations> {
+  if (options.yes) {
+    return {
+      language: 'ts',
+      strict: true,
+    };
+  }
+
+  try {
+    const languageResponse = await select({
+      message: 'Use TypeScript or JavaScript?',
+      options: [
+        { label: 'TypeScript', value: 'ts' },
+        { label: 'JavaScript', value: 'js' },
+      ],
+    });
+
+    const strictResponse = await confirm({
+      message: 'Enable strict TypeScript mode?',
+      initialValue: true,
+    });
+
+    return {
+      language: (unwrapPromptResponse(languageResponse) as NestCustomizations['language']) ?? 'ts',
+      strict: unwrapPromptResponse(strictResponse) ?? true,
+    };
+  } catch (error) {
+    if (isPromptCancelledError(error)) {
+      abortCustomizationPrompt(error);
+    }
+
+    throw error;
+  }
+}
+
+export async function promptHonoCustomizations(
+  options: { yes?: boolean } = {}
+): Promise<HonoCustomizations> {
+  if (options.yes) {
+    return {
+      template: 'nodejs',
+    };
+  }
+
+  try {
+    const templateResponse = await select({
+      message: 'Select Hono runtime template:',
+      options: [
+        { label: 'Node.js', value: 'nodejs' },
+        { label: 'Bun', value: 'bun' },
+        { label: 'Cloudflare Workers', value: 'cloudflare-workers' },
+        { label: 'Vercel', value: 'vercel' },
+      ],
+    });
+
+    return {
+      template:
+        (unwrapPromptResponse(templateResponse) as HonoCustomizations['template']) ?? 'nodejs',
+    };
   } catch (error) {
     if (isPromptCancelledError(error)) {
       abortCustomizationPrompt(error);
@@ -429,6 +663,232 @@ export async function promptNpmPackageCustomizations(
       'none';
 
     return customizations;
+  } catch (error) {
+    if (isPromptCancelledError(error)) {
+      abortCustomizationPrompt(error);
+    }
+
+    throw error;
+  }
+}
+
+export async function promptExpoCustomizations(
+  options: { yes?: boolean } = {}
+): Promise<ExpoCustomizations> {
+  if (options.yes) {
+    return { template: 'default' };
+  }
+
+  try {
+    const templateResponse = await select({
+      message: 'Select Expo template:',
+      options: [
+        { label: 'Default', hint: 'Recommended Expo starter', value: 'default' },
+        { label: 'Blank', hint: 'Minimal blank project', value: 'blank' },
+        { label: 'Tabs', hint: 'Tab navigation starter', value: 'tabs' },
+        { label: 'Bare minimum', hint: 'Bare React Native project', value: 'bare-minimum' },
+      ],
+    });
+
+    return {
+      template:
+        (unwrapPromptResponse(templateResponse) as ExpoCustomizations['template']) ?? 'default',
+    };
+  } catch (error) {
+    if (isPromptCancelledError(error)) {
+      abortCustomizationPrompt(error);
+    }
+
+    throw error;
+  }
+}
+
+export async function promptRemixCustomizations(
+  options: { yes?: boolean } = {}
+): Promise<RemixCustomizations> {
+  if (options.yes) {
+    return { template: 'remix' };
+  }
+
+  try {
+    const templateResponse = await select({
+      message: 'Select Remix template:',
+      options: [
+        { label: 'Default (Remix)', hint: 'Standard Remix starter', value: 'remix' },
+        { label: 'Grunge Stack', hint: 'AWS + DynamoDB', value: 'grunge-stack' },
+        { label: 'Blues Stack', hint: 'Deployed to Fly.io + Prisma', value: 'blues-stack' },
+        { label: 'Indie Stack', hint: 'Deployed to Fly.io + SQLite', value: 'indie-stack' },
+      ],
+    });
+
+    return {
+      template:
+        (unwrapPromptResponse(templateResponse) as RemixCustomizations['template']) ?? 'remix',
+    };
+  } catch (error) {
+    if (isPromptCancelledError(error)) {
+      abortCustomizationPrompt(error);
+    }
+
+    throw error;
+  }
+}
+
+export async function promptFastifyCustomizations(
+  options: { yes?: boolean } = {}
+): Promise<FastifyCustomizations> {
+  if (options.yes) {
+    return { language: 'ts' };
+  }
+
+  try {
+    const languageResponse = await select({
+      message: 'Use TypeScript or JavaScript?',
+      options: [
+        { label: 'TypeScript', value: 'ts' },
+        { label: 'JavaScript', value: 'js' },
+      ],
+    });
+
+    return {
+      language:
+        (unwrapPromptResponse(languageResponse) as FastifyCustomizations['language']) ?? 'ts',
+    };
+  } catch (error) {
+    if (isPromptCancelledError(error)) {
+      abortCustomizationPrompt(error);
+    }
+
+    throw error;
+  }
+}
+
+export async function promptTauriCustomizations(
+  options: { yes?: boolean } = {}
+): Promise<TauriCustomizations> {
+  if (options.yes) {
+    return { template: 'react-ts' };
+  }
+
+  try {
+    const templateResponse = await select({
+      message: 'Select Tauri frontend template:',
+      options: [
+        { label: 'React + TypeScript', value: 'react-ts' },
+        { label: 'React', value: 'react' },
+        { label: 'Vue + TypeScript', value: 'vue-ts' },
+        { label: 'Vue', value: 'vue' },
+        { label: 'Svelte + TypeScript', value: 'svelte-ts' },
+        { label: 'Svelte', value: 'svelte' },
+        { label: 'Vanilla + TypeScript', value: 'vanilla-ts' },
+        { label: 'Vanilla', value: 'vanilla' },
+      ],
+    });
+
+    return {
+      template:
+        (unwrapPromptResponse(templateResponse) as TauriCustomizations['template']) ?? 'react-ts',
+    };
+  } catch (error) {
+    if (isPromptCancelledError(error)) {
+      abortCustomizationPrompt(error);
+    }
+
+    throw error;
+  }
+}
+
+export async function promptT3Customizations(
+  options: { yes?: boolean } = {}
+): Promise<T3Customizations> {
+  if (options.yes) {
+    return {
+      packages: ['tailwind', 'trpc', 'prisma'],
+      appRouter: true,
+    };
+  }
+
+  try {
+    const appRouterResponse = await confirm({
+      message: 'Use App Router?',
+      initialValue: true,
+    });
+
+    const trpcResponse = await confirm({
+      message: 'Add tRPC?',
+      initialValue: true,
+    });
+
+    const prismaResponse = await confirm({
+      message: 'Add Prisma?',
+      initialValue: true,
+    });
+
+    const tailwindResponse = await confirm({
+      message: 'Add Tailwind CSS?',
+      initialValue: true,
+    });
+
+    const nextAuthResponse = await confirm({
+      message: 'Add NextAuth.js?',
+      initialValue: false,
+    });
+
+    const packages: string[] = [];
+    if (unwrapPromptResponse(tailwindResponse)) packages.push('tailwind');
+    if (unwrapPromptResponse(trpcResponse)) packages.push('trpc');
+    if (unwrapPromptResponse(prismaResponse)) packages.push('prisma');
+    if (unwrapPromptResponse(nextAuthResponse)) packages.push('nextAuth');
+
+    return {
+      packages,
+      appRouter: unwrapPromptResponse(appRouterResponse) ?? true,
+    };
+  } catch (error) {
+    if (isPromptCancelledError(error)) {
+      abortCustomizationPrompt(error);
+    }
+
+    throw error;
+  }
+}
+
+export async function promptAngularCustomizations(
+  options: { yes?: boolean } = {}
+): Promise<AngularCustomizations> {
+  if (options.yes) {
+    return {
+      style: 'css',
+      ssr: false,
+      routing: true,
+    };
+  }
+
+  try {
+    const styleResponse = await select({
+      message: 'Stylesheet format:',
+      options: [
+        { label: 'CSS', value: 'css' },
+        { label: 'SCSS', value: 'scss' },
+        { label: 'Less', value: 'less' },
+      ],
+    });
+
+    const ssrResponse = await confirm({
+      message: 'Enable server-side rendering (SSR)?',
+      initialValue: false,
+    });
+
+    const routingResponse = await confirm({
+      message: 'Add routing?',
+      initialValue: true,
+    });
+
+    return {
+      style: (unwrapPromptResponse(styleResponse) as AngularCustomizations['style']) ?? 'css',
+      ssr: unwrapPromptResponse(ssrResponse) ?? false,
+      routing: unwrapPromptResponse(routingResponse) ?? true,
+    };
   } catch (error) {
     if (isPromptCancelledError(error)) {
       abortCustomizationPrompt(error);

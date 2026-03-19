@@ -3,7 +3,7 @@ import { isAbsolute, join } from 'path';
 import validatePackageName from 'validate-npm-package-name';
 import { logger } from './logger.js';
 
-const INVALID_PATH_CHARS = /[<>:"/\\|?*\x00-\x1f]/;
+const INVALID_PATH_CHARS = /[<>:"/\\|?*]/;
 const WINDOWS_RESERVED_NAMES = new Set([
   'CON',
   'PRN',
@@ -35,6 +35,13 @@ function hasTrailingDotOrSpace(value: string): boolean {
   return /[. ]$/.test(value);
 }
 
+function hasControlCharacters(value: string): boolean {
+  return [...value].some((character) => {
+    const codePoint = character.codePointAt(0);
+    return codePoint !== undefined && codePoint < 32;
+  });
+}
+
 function isWindowsReservedSegment(segment: string): boolean {
   const basename = segment.split('.')[0]?.toUpperCase() ?? '';
   return WINDOWS_RESERVED_NAMES.has(basename);
@@ -49,6 +56,10 @@ function validatePathSegment(
   }
 
   if (INVALID_PATH_CHARS.test(segment)) {
+    return `${subject} contains invalid characters`;
+  }
+
+  if (hasControlCharacters(segment)) {
     return `${subject} contains invalid characters`;
   }
 

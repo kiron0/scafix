@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
+import { AVAILABLE_STACK_IDS_LABEL } from './adapters/index.js';
 import { createCommand } from './commands/create.js';
 import { initCommand } from './commands/init.js';
 import { rootCommand } from './commands/root.js';
@@ -20,6 +21,7 @@ function applyProjectOptions(command: Command, includeYes = false): Command {
     .option('-d, --directory <dir>', 'Project directory')
     .option('--package-manager <pm>', 'Package manager (npm, pnpm, yarn, bun)')
     .option('--git', 'Initialize Git repository')
+    .option('--no-git', 'Skip Git repository initialization')
     .option('--debug', 'Enable debug output');
 
   if (includeYes) {
@@ -27,6 +29,29 @@ function applyProjectOptions(command: Command, includeYes = false): Command {
   }
 
   return command;
+}
+
+function resolveActionOptions<T extends Record<string, unknown>>(value: T): T {
+  if ('opts' in value && typeof value.opts === 'function') {
+    return value.opts() as T;
+  }
+
+  return value;
+}
+
+function resolveSubcommandOptions<T extends Record<string, unknown>>(
+  value: T,
+  command?: Command
+): T {
+  if (command && typeof command.optsWithGlobals === 'function') {
+    return command.optsWithGlobals() as T;
+  }
+
+  if (command && typeof command.opts === 'function') {
+    return command.opts() as T;
+  }
+
+  return resolveActionOptions(value);
 }
 
 async function runAction(task: () => Promise<void>): Promise<void> {
@@ -51,9 +76,10 @@ applyProjectOptions(
   program
     .command('create')
     .description('Create a new project with a specific stack')
-    .argument('[stack]', 'Stack ID (vite, next, express, npm)'),
+    .argument('[stack]', `Stack ID (${AVAILABLE_STACK_IDS_LABEL})`),
   true
-).action(async (stack, options) => {
+).action(async (stack, actionOptions, command) => {
+  const options = resolveSubcommandOptions(actionOptions, command);
   if (options.debug) {
     process.env.DEBUG = 'true';
   }
@@ -69,14 +95,16 @@ applyProjectOptions(
 
 applyProjectOptions(
   program.command('init').description('Initialize a new project interactively')
-).action(async (options) => {
+).action(async (actionOptions, command) => {
+  const options = resolveSubcommandOptions(actionOptions, command);
   if (options.debug) {
     process.env.DEBUG = 'true';
   }
   await runAction(() => initCommand(options));
 });
 
-program.action(async (options) => {
+program.action(async (actionOptions) => {
+  const options = resolveActionOptions(actionOptions);
   if (options.debug) {
     process.env.DEBUG = 'true';
   }

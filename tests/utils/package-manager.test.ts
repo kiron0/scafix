@@ -88,7 +88,7 @@ describe('getPublishCommand', () => {
     bun: 'bun publish',
   };
 
-  it.each((['npm', 'pnpm', 'bun'] as const))('returns correct publish command for %s', (pm) => {
+  it.each(['npm', 'pnpm', 'bun'] as const)('returns correct publish command for %s', (pm) => {
     expect(getPublishCommand(pm)).toBe(expected[pm]);
   });
 
@@ -192,16 +192,19 @@ describe('detectPackageManager', () => {
     ['npm', 'npm@10.9.0'],
     ['pnpm', 'pnpm@9.15.0'],
     ['bun', 'bun@1.2.0'],
-  ] as const)('detects %s from the nearest packageManager field when no lockfile exists', async (expected, packageManagerField) => {
-    const projectPath = join(tempDir, 'workspace', 'apps', 'web');
-    await mkdir(projectPath, { recursive: true });
-    await writeFile(
-      join(tempDir, 'workspace', 'package.json'),
-      JSON.stringify({ packageManager: packageManagerField }, null, 2)
-    );
+  ] as const)(
+    'detects %s from the nearest packageManager field when no lockfile exists',
+    async (expected, packageManagerField) => {
+      const projectPath = join(tempDir, 'workspace', 'apps', 'web');
+      await mkdir(projectPath, { recursive: true });
+      await writeFile(
+        join(tempDir, 'workspace', 'package.json'),
+        JSON.stringify({ packageManager: packageManagerField }, null, 2)
+      );
 
-    expect(detectPackageManager(projectPath)).toBe(expected);
-  });
+      expect(detectPackageManager(projectPath)).toBe(expected);
+    }
+  );
 
   it('prefers a closer packageManager field over a more distant lockfile', async () => {
     const projectPath = join(tempDir, 'workspace', 'apps', 'web');

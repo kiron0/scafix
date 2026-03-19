@@ -4,7 +4,7 @@ import { CliExitError } from '../../src/utils/cli-error.js';
 const mocks = vi.hoisted(() => ({
   adapters: [
     {
-      backend: false,
+      category: 'frontend',
       create: vi.fn(),
       description: 'test adapter',
       id: 'vite',
@@ -143,6 +143,15 @@ describe('initCommand', () => {
     );
   });
 
+  it('returns early when the project-name prompt is cancelled', async () => {
+    mocks.promptProjectName.mockResolvedValue(null);
+
+    await initCommand({});
+
+    expect(mocks.promptDirectory).not.toHaveBeenCalled();
+    expect(mocks.adapters[0].create).not.toHaveBeenCalled();
+  });
+
   it('aborts when the directory prompt is cancelled', async () => {
     mocks.promptDirectory.mockRejectedValue(new CliExitError(130));
 
@@ -247,9 +256,31 @@ describe('initCommand', () => {
     );
   });
 
+  it('rejects existing directories before adapter execution', async () => {
+    mocks.validateDirectory.mockReturnValue({
+      exists: true,
+      path: '/tmp/custom-name',
+      valid: true,
+    });
+
+    await expect(
+      initCommand({
+        directory: 'custom-name',
+        name: 'custom-name',
+        packageManager: 'pnpm',
+      })
+    ).rejects.toBeInstanceOf(CliExitError);
+
+    expect(mocks.adapters[0].create).not.toHaveBeenCalled();
+    expect(mocks.logger.warn).toHaveBeenCalledWith('The directory "custom-name" already exists.');
+    expect(mocks.logger.info).toHaveBeenCalledWith(
+      'Please choose a different project name or remove the existing directory.'
+    );
+  });
+
   it('uses npm package validation and a safe default directory for scoped packages', async () => {
     const npmAdapter = {
-      backend: false,
+      category: 'library',
       create: vi.fn(),
       description: 'test adapter',
       id: 'npm',
@@ -274,7 +305,7 @@ describe('initCommand', () => {
 
   it('uses npm-safe validation for express project names', async () => {
     const expressAdapter = {
-      backend: false,
+      category: 'backend',
       create: vi.fn(),
       description: 'test adapter',
       id: 'express',

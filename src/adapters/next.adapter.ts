@@ -1,18 +1,18 @@
 import { spinner } from '@clack/prompts';
-import { existsSync } from 'fs';
-import { mkdir, readFile, rm, rmdir, writeFile } from 'fs/promises';
-import { dirname, join } from 'path';
+import { writeFile } from 'fs/promises';
+import { join } from 'path';
 import { promptNextCustomizations } from '../prompts/customizations.js';
 import type { CreateOptions, StackAdapter } from '../types/stack.js';
 import { CliExitError } from '../utils/cli-error.js';
 import { exec } from '../utils/exec.js';
 import { logger } from '../utils/logger.js';
 import { detectYarnFlavor, getDlxCommand } from '../utils/package-manager.js';
+import { validateDirectory, validateProjectName } from '../utils/validate.js';
 import {
-  getPreferredPackageJsonName,
-  validateDirectory,
-  validateProjectName,
-} from '../utils/validate.js';
+  cleanupFailedScaffold,
+  createMissingParentDirectories,
+  reconcileGeneratedPackageJsonName,
+} from './shared/scaffold.js';
 
 async function setupPrettier(projectPath: string, packageManager: string): Promise<void> {
   const s = spinner();
@@ -46,56 +46,11 @@ async function setupPrettier(projectPath: string, packageManager: string): Promi
   }
 }
 
-async function reconcileGeneratedPackageJsonName(
-  projectPath: string,
-  projectName: string,
-  directory: string
-): Promise<void> {
-  const packageJsonPath = join(projectPath, 'package.json');
-  const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as {
-    name?: unknown;
-    [key: string]: unknown;
-  };
-  const preferredName = getPreferredPackageJsonName(projectName, directory);
-
-  if (packageJson.name !== preferredName) {
-    packageJson.name = preferredName;
-    await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
-  }
-}
-
-async function createMissingParentDirectories(projectPath: string): Promise<string[]> {
-  const cwd = process.cwd();
-  const projectParentPath = dirname(projectPath);
-
-  if (projectParentPath === cwd) {
-    return [];
-  }
-
-  const relativeParentPath = projectParentPath.slice(cwd.length).replace(/^[/\\]+/, '');
-  if (!relativeParentPath) {
-    return [];
-  }
-
-  const createdDirectories: string[] = [];
-  let currentPath = cwd;
-
-  for (const segment of relativeParentPath.split(/[\\/]+/).filter((value) => value.length > 0)) {
-    currentPath = join(currentPath, segment);
-    if (!existsSync(currentPath)) {
-      await mkdir(currentPath);
-      createdDirectories.push(currentPath);
-    }
-  }
-
-  return createdDirectories;
-}
-
 export const nextAdapter: StackAdapter = {
   id: 'next',
   name: 'Next.js',
   description: 'Scaffold a Next.js project via the official create-next-app CLI',
-  backend: false,
+  category: 'frontend',
 
   async create(options: CreateOptions): Promise<void> {
     const { projectName, directory = projectName, packageManager = 'npm' } = options;
@@ -129,8 +84,6 @@ export const nextAdapter: StackAdapter = {
           : packageManager === 'bun'
             ? '--use-bun'
             : '--use-npm';
-    const gitFlag = options.git ? null : '--disable-git';
-
     const pmCommands: Record<string, { cmd: string; args: string[] }> = {
       npm: {
         cmd: 'npx',
@@ -145,7 +98,7 @@ export const nextAdapter: StackAdapter = {
           '--import-alias',
           '@/*',
           packageManagerFlag,
-          ...(gitFlag ? [gitFlag] : []),
+          '--disable-git',
           '--yes',
         ],
       },
@@ -163,7 +116,7 @@ export const nextAdapter: StackAdapter = {
           '--import-alias',
           '@/*',
           packageManagerFlag,
-          ...(gitFlag ? [gitFlag] : []),
+          '--disable-git',
           '--yes',
         ],
       },
@@ -181,7 +134,7 @@ export const nextAdapter: StackAdapter = {
           '--import-alias',
           '@/*',
           packageManagerFlag,
-          ...(gitFlag ? [gitFlag] : []),
+          '--disable-git',
           '--yes',
         ],
       },
@@ -198,7 +151,7 @@ export const nextAdapter: StackAdapter = {
           '--import-alias',
           '@/*',
           packageManagerFlag,
-          ...(gitFlag ? [gitFlag] : []),
+          '--disable-git',
           '--yes',
         ],
       },
@@ -221,18 +174,15 @@ export const nextAdapter: StackAdapter = {
         logger.info('');
         logger.info('Initialising shadcn/ui...');
         const yarnFlavor = packageManager === 'yarn' ? detectYarnFlavor(projectPath) : undefined;
-        const dlx = getDlxCommand(packageManager, 'shadcn@latest', [
-          'init',
-          '--defaults',
-          '--yes',
-          '--template',
-          'next',
-          '--cwd',
-          projectPath,
-        ], {
-          directory: projectPath,
-          yarnFlavor,
-        });
+        const dlx = getDlxCommand(
+          packageManager,
+          'shadcn@latest',
+          ['init', '--defaults', '--yes', '--template', 'next', '--cwd', projectPath],
+          {
+            directory: projectPath,
+            yarnFlavor,
+          }
+        );
         await exec(dlx.cmd, dlx.args, {
           cwd: projectPath,
           stdio: 'inherit',
@@ -244,14 +194,7 @@ export const nextAdapter: StackAdapter = {
       logger.info(`  cd ${directory}`);
       logger.info(`  ${packageManager === 'npm' ? 'npm run dev' : `${packageManager} run dev`}`);
     } catch (error) {
-      await rm(projectPath, { force: true, recursive: true });
-      for (const parentDirectory of createdParentDirectories.reverse()) {
-        try {
-          await rmdir(parentDirectory);
-        } catch {
-          // Leave non-empty parent directories intact.
-        }
-      }
+      await cleanupFailedScaffold(projectPath, createdParentDirectories);
       throw error;
     }
   },

@@ -1,6 +1,6 @@
 {
   "name": "scafix",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A universal scaffolding CLI that initializes modern application stacks through a single, consistent interface",
   "type": "module",
   "main": "dist/index.js",
@@ -11,8 +11,11 @@
     "start": "node dist/index.js",
     "build": "tsup",
     "format": "prettier --write \"**/*.{js,json,ts,md}\"",
+    "lint": "eslint src tests scripts --ext .ts,.mjs",
     "test": "vitest run",
-    "test:smoke": "node scripts/run-network-smoke.mjs"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:smoke": "node scripts/run-network-smoke.mjs",
+    "test:smoke:quick": "node scripts/run-network-smoke.mjs --package-managers npm"
   },
   "keywords": [
     "cli",
@@ -41,6 +44,7 @@
     "validate-npm-package-name": "^7.0.2"
   },
   "devDependencies": {
+    "@types/validate-npm-package-name": "^4.0.2",
     "@typescript-eslint/eslint-plugin": "^8.57.1",
     "@typescript-eslint/parser": "^8.57.1",
     "@types/node": "^25.5.0",

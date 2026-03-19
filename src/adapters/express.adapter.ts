@@ -1,8 +1,12 @@
 import { spinner } from '@clack/prompts';
-import { mkdir, rm, writeFile } from 'fs/promises';
+import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import type { ExpressCustomizations } from '../prompts/customizations.js';
 import { promptExpressCustomizations } from '../prompts/customizations.js';
+import {
+  cleanupFailedScaffold,
+  createMissingParentDirectories,
+} from './shared/scaffold.js';
 import type { CreateOptions, StackAdapter } from '../types/stack.js';
 import { exec } from '../utils/exec.js';
 import { getEslintPackages } from '../utils/eslint.js';
@@ -53,6 +57,10 @@ function applyCustomizationOverrides(
 function toJavaScriptTemplate(content: string): string {
   return content
     .replace(/^import\s+\{\s*Request\s*,\s*Response\s*\}\s+from\s+'express'\n/m, '')
+    .replace(
+      /\b(const|let|var)\s+([A-Za-z_$][\w$]*)\s*:\s*([^=\n]+?)\s*=/g,
+      '$1 $2 ='
+    )
     .replace(/:\s*Request/g, '')
     .replace(/:\s*Response/g, '')
     .replace(/:\s*string/g, '')
@@ -229,30 +237,34 @@ export const remove = async (req: Request, res: Response) => {
     : toJavaScriptTemplate(controllerContent);
   await writeFile(join(srcPath, 'controllers', `example.${ext}`), finalControllerContent);
 
-  // Generate model
-  const modelContent = `export const findAll = async () => {
-  // TODO: Implement database query
-  return []
+  // Generate model (in-memory store; swap for a real database later)
+  const modelContent = `const store: Map<string, Record<string, unknown>> = new Map()
+let nextId = 1
+
+export const findAll = async () => {
+  return [...store.values()]
 }
 
 export const findById = async (id: string) => {
-  // TODO: Implement database query
-  return null
+  return store.get(id) ?? null
 }
 
 export const create = async (data: any) => {
-  // TODO: Implement database insert
-  return { id: '1', ...data }
+  const id = String(nextId++)
+  const record = { id, ...data }
+  store.set(id, record)
+  return record
 }
 
 export const update = async (id: string, data: any) => {
-  // TODO: Implement database update
-  return { id, ...data }
+  if (!store.has(id)) return null
+  const record = { ...store.get(id), ...data, id }
+  store.set(id, record)
+  return record
 }
 
 export const remove = async (id: string) => {
-  // TODO: Implement database delete
-  return true
+  return store.delete(id)
 }
 `;
   const finalModelContent = customizations.typescript
@@ -385,30 +397,34 @@ export const deleteUser = async (req: Request, res: Response) => {
     : toJavaScriptTemplate(controllerContent);
   await writeFile(join(srcPath, 'controllers', `user.${ext}`), finalUserControllerContent);
 
-  // Generate service
-  const serviceContent = `export const getAllUsers = async () => {
-  // TODO: Implement business logic and data access
-  return []
+  // Generate service (in-memory store; swap for a real database later)
+  const serviceContent = `const users: Map<string, Record<string, unknown>> = new Map()
+let nextId = 1
+
+export const getAllUsers = async () => {
+  return [...users.values()]
 }
 
 export const getUserById = async (id: string) => {
-  // TODO: Implement business logic and data access
-  return null
+  return users.get(id) ?? null
 }
 
 export const createUser = async (userData: any) => {
-  // TODO: Implement business logic and data access
-  return { id: '1', ...userData }
+  const id = String(nextId++)
+  const user = { id, ...userData }
+  users.set(id, user)
+  return user
 }
 
 export const updateUser = async (id: string, userData: any) => {
-  // TODO: Implement business logic and data access
-  return { id, ...userData }
+  if (!users.has(id)) return null
+  const user = { ...users.get(id), ...userData, id }
+  users.set(id, user)
+  return user
 }
 
 export const deleteUser = async (id: string) => {
-  // TODO: Implement business logic and data access
-  return true
+  return users.delete(id)
 }
 `;
   const finalServiceContent = customizations.typescript
@@ -564,30 +580,34 @@ export const deleteProduct = async (id: string) => {
     : toJavaScriptTemplate(businessContent);
   await writeFile(join(srcPath, 'business', `product.${ext}`), finalBusinessContent);
 
-  // Generate data layer
-  const dataContent = `export const findAll = async () => {
-  // TODO: Implement database query
-  return []
+  // Generate data layer (in-memory store; swap for a real database later)
+  const dataContent = `const store: Map<string, Record<string, unknown>> = new Map()
+let nextId = 1
+
+export const findAll = async () => {
+  return [...store.values()]
 }
 
 export const findById = async (id: string) => {
-  // TODO: Implement database query
-  return null
+  return store.get(id) ?? null
 }
 
 export const create = async (data: any) => {
-  // TODO: Implement database insert
-  return { id: '1', ...data }
+  const id = String(nextId++)
+  const record = { id, ...data }
+  store.set(id, record)
+  return record
 }
 
 export const update = async (id: string, data: any) => {
-  // TODO: Implement database update
-  return { id, ...data }
+  if (!store.has(id)) return null
+  const record = { ...store.get(id), ...data, id }
+  store.set(id, record)
+  return record
 }
 
 export const remove = async (id: string) => {
-  // TODO: Implement database delete
-  return true
+  return store.delete(id)
 }
 `;
   const finalDataContent = customizations.typescript
@@ -649,10 +669,10 @@ export const expressAdapter: StackAdapter = {
   id: 'express',
   name: 'Node.js + Express + TypeScript',
   description: 'Express server with TypeScript',
-  backend: true,
+  category: 'backend',
 
   async create(options: CreateOptions): Promise<void> {
-    const { projectName, directory = projectName, packageManager = 'npm', yes = false } = options;
+    const { projectName, directory = projectName, packageManager = 'npm' } = options;
 
     if (!validateNpmPackageName(projectName)) {
       throw new Error('Invalid npm package name');
@@ -680,10 +700,13 @@ export const expressAdapter: StackAdapter = {
     );
 
     let createdProjectDirectory = false;
+    let createdParentDirectories: string[] = [];
 
     try {
+      createdParentDirectories = await createMissingParentDirectories(projectPath);
+
       // Create project directory
-      await mkdir(projectPath, { recursive: true });
+      await mkdir(projectPath);
       createdProjectDirectory = true;
 
       // Create package.json
@@ -913,7 +936,7 @@ build
     } catch (error) {
       if (createdProjectDirectory) {
         try {
-          await rm(projectPath, { force: true, recursive: true });
+          await cleanupFailedScaffold(projectPath, createdParentDirectories);
         } catch (cleanupError) {
           logger.warn(
             `Failed to clean up ${directory}: ${
