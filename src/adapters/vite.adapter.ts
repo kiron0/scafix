@@ -1,10 +1,15 @@
 import { spinner } from '@clack/prompts';
-import { access, readFile, rm, writeFile } from 'fs/promises';
+import { access, readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { promptViteReactCustomizations } from '../prompts/customizations.js';
+import {
+  cleanupFailedScaffold,
+  createMissingParentDirectories,
+} from './shared/scaffold.js';
 import type { CreateOptions, StackAdapter } from '../types/stack.js';
 import { CliExitError } from '../utils/cli-error.js';
 import { exec } from '../utils/exec.js';
+import { stripGeneratedGitDirectory } from '../utils/git.js';
 import { logger } from '../utils/logger.js';
 import { detectYarnFlavor, getDlxCommand } from '../utils/package-manager.js';
 import type { PackageManager } from '../utils/package-manager.js';
@@ -412,6 +417,8 @@ async function reconcileGeneratedPackageJsonName(
     packageJson.name = preferredName;
     await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
   }
+
+  await stripGeneratedGitDirectory(projectPath);
 }
 
 async function setupTailwindV4(projectPath: string, packageManager: string): Promise<void> {
@@ -610,8 +617,10 @@ export const viteReactAdapter: StackAdapter = {
 
     const projectPath = join(process.cwd(), directory);
     const { cmd, args } = pmCommands[packageManager] ?? pmCommands.npm;
+    let createdParentDirectories: string[] = [];
 
     try {
+      createdParentDirectories = await createMissingParentDirectories(projectPath);
       await exec(cmd, args, { cwd: process.cwd(), stdio: 'inherit' });
       await reconcileGeneratedPackageJsonName(projectPath, projectName, directory);
       await installProjectDependencies(projectPath, packageManager);
@@ -659,7 +668,7 @@ export const viteReactAdapter: StackAdapter = {
       logger.info(`  cd ${directory}`);
       logger.info(`  ${packageManager === 'npm' ? 'npm run dev' : `${packageManager} run dev`}`);
     } catch (error) {
-      await rm(projectPath, { force: true, recursive: true });
+      await cleanupFailedScaffold(projectPath, createdParentDirectories);
       throw error;
     }
   },

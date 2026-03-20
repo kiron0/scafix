@@ -688,7 +688,7 @@ module.exports = {
       }
       logger.info(`  ${getPublishCommand(packageManager, packageManagerCommandOptions)}`);
     } catch (error) {
-      if (createdProjectDirectory) {
+      if (createdProjectDirectory || createdParentDirectories.length > 0) {
         try {
           await cleanupFailedScaffold(projectPath, createdParentDirectories);
         } catch (cleanupError) {

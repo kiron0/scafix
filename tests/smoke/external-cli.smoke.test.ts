@@ -174,6 +174,7 @@ describeIf.sequential('external CLI smoke', () => {
       await expect(
         access(join(projectPath, 'src', 'routes', '+page.svelte'))
       ).resolves.toBeUndefined();
+      await expect(access(join(projectPath, '.git'))).rejects.toThrow();
 
       const packageJson = JSON.parse(await readFile(join(projectPath, 'package.json'), 'utf8'));
       expect(packageJson.name).toBe(projectName);
@@ -200,6 +201,7 @@ describeIf.sequential('external CLI smoke', () => {
       });
 
       const projectPath = join(tempDir, 'apps', `web-${packageManager}`);
+      await expect(access(join(projectPath, '.git'))).rejects.toThrow();
       const packageJson = JSON.parse(await readFile(join(projectPath, 'package.json'), 'utf8'));
       expect(packageJson.name).toBe(`marketing-site-${packageManager}`);
 
@@ -333,6 +335,7 @@ describeIf.sequential('external CLI smoke', () => {
       const projectPath = join(tempDir, projectName);
       await expect(access(join(projectPath, 'package.json'))).resolves.toBeUndefined();
       await expect(access(join(projectPath, 'src', 'main.tsx'))).resolves.toBeUndefined();
+      await expect(access(join(projectPath, '.git'))).rejects.toThrow();
 
       const packageJson = JSON.parse(await readFile(join(projectPath, 'package.json'), 'utf8'));
       expect(packageJson.name).toBe(projectName);
@@ -361,6 +364,7 @@ describeIf.sequential('external CLI smoke', () => {
       });
 
       const projectPath = join(tempDir, 'apps', `marketing-web-${packageManager}`);
+      await expect(access(join(projectPath, '.git'))).rejects.toThrow();
       const packageJson = JSON.parse(await readFile(join(projectPath, 'package.json'), 'utf8'));
       expect(packageJson.name).toBe(`marketing-site-${packageManager}`);
 
@@ -395,6 +399,7 @@ describeIf.sequential('external CLI smoke', () => {
       await expect(access(join(projectPath, 'package.json'))).resolves.toBeUndefined();
       await expect(access(join(projectPath, 'components.json'))).resolves.toBeUndefined();
       await expect(access(join(projectPath, 'src', 'main.ts'))).resolves.toBeUndefined();
+      await expect(access(join(projectPath, '.git'))).rejects.toThrow();
 
       const packageJson = JSON.parse(await readFile(join(projectPath, 'package.json'), 'utf8'));
       expect(packageJson.name).toBe(projectName);

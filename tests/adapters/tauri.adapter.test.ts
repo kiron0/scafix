@@ -65,6 +65,29 @@ describe.sequential('tauriAdapter', () => {
     );
   });
 
+  it('removes a scaffold-created git repository during direct adapter usage', async () => {
+    mocks.exec.mockImplementation(
+      async (_command: string, args: string[], options: { cwd?: string }) => {
+        const projectName = args[2] as string | undefined;
+        if (!projectName || options?.cwd !== tempDir) return;
+        const projectPath = join(tempDir, projectName);
+        await mkdir(join(projectPath, '.git'), { recursive: true });
+        await writeFile(
+          join(projectPath, 'package.json'),
+          `${JSON.stringify({ name: projectName }, null, 2)}\n`
+        );
+      }
+    );
+
+    await tauriAdapter.create({
+      packageManager: 'npm',
+      projectName: 'demo-tauri-git',
+      yes: true,
+    });
+
+    await expect(access(join(tempDir, 'demo-tauri-git', '.git'))).rejects.toThrow();
+  });
+
   it('cleans up on failure', async () => {
     mocks.exec.mockRejectedValue(new Error('tauri failed'));
 

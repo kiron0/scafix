@@ -934,7 +934,7 @@ build
       logger.info(`  cd ${directory}`);
       logger.info(`  ${getDevCommand(detectedPm)}`);
     } catch (error) {
-      if (createdProjectDirectory) {
+      if (createdProjectDirectory || createdParentDirectories.length > 0) {
         try {
           await cleanupFailedScaffold(projectPath, createdParentDirectories);
         } catch (cleanupError) {

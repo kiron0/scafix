@@ -137,6 +137,7 @@ describeIf.sequential('additional adapter smoke', () => {
 
     await expect(access(join(projectPath, 'package.json'))).resolves.toBeUndefined();
     await expect(access(join(projectPath, 'src', 'app.ts'))).resolves.toBeUndefined();
+    await expect(access(join(projectPath, '.git'))).rejects.toThrow();
     expect(packageJson.name).toBe(projectName);
 
     runGeneratedCommand(projectPath, 'npm', ['run', 'build:ts']);
@@ -157,6 +158,7 @@ describeIf.sequential('additional adapter smoke', () => {
 
     await expect(access(join(projectPath, 'package.json'))).resolves.toBeUndefined();
     await expect(access(join(projectPath, 'src', 'index.ts'))).resolves.toBeUndefined();
+    await expect(access(join(projectPath, '.git'))).rejects.toThrow();
     expect(packageJson.name).toBe(projectName);
   }, 300000);
 
@@ -175,6 +177,7 @@ describeIf.sequential('additional adapter smoke', () => {
 
     await expect(access(join(projectPath, 'package.json'))).resolves.toBeUndefined();
     await expect(access(join(projectPath, 'app.json'))).resolves.toBeUndefined();
+    await expect(access(join(projectPath, '.git'))).rejects.toThrow();
     expect(packageJson.name).toBe(projectName);
   }, 300000);
 
@@ -193,6 +196,7 @@ describeIf.sequential('additional adapter smoke', () => {
 
     await expect(access(join(projectPath, 'package.json'))).resolves.toBeUndefined();
     await expect(access(join(projectPath, 'src-tauri', 'tauri.conf.json'))).resolves.toBeUndefined();
+    await expect(access(join(projectPath, '.git'))).rejects.toThrow();
     expect(packageJson.name).toBe(projectName);
   }, 300000);
 

@@ -191,6 +191,35 @@ describe.sequential('nuxtAdapter', () => {
     );
   });
 
+  it('always disables Nuxt git initialisation so root commands remain the single git owner', async () => {
+    await nuxtAdapter.create({
+      git: true,
+      packageManager: 'npm',
+      projectName: 'demo-nuxt-git',
+      yes: true,
+    });
+
+    expect(mocks.exec).toHaveBeenCalledWith(
+      'npm',
+      [
+        'create',
+        'nuxt@latest',
+        'demo-nuxt-git',
+        '--',
+        '--template',
+        'minimal',
+        '--packageManager',
+        'npm',
+        '--no-modules',
+        '--no-gitInit',
+      ],
+      expect.objectContaining({
+        cwd: tempDir,
+        stdio: 'inherit',
+      })
+    );
+  });
+
   it('cleans up any parent directories it created when nested scaffolding fails early', async () => {
     mocks.exec.mockRejectedValue(new Error('create nuxt failed'));
 

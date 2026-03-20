@@ -82,6 +82,25 @@ describe.sequential('t3Adapter', () => {
     );
   });
 
+  it('always disables create-t3-app git initialisation so root commands remain the single git owner', async () => {
+    await t3Adapter.create({
+      git: true,
+      packageManager: 'npm',
+      projectName: 'demo-t3-git',
+      yes: true,
+    });
+
+    expect(mocks.exec).toHaveBeenCalledWith(
+      'npx',
+      expect.arrayContaining([
+        'create-t3-app@latest',
+        'demo-t3-git',
+        '--noGit',
+      ]),
+      expect.objectContaining({ cwd: tempDir, stdio: 'inherit' })
+    );
+  });
+
   it('cleans up on failure', async () => {
     mocks.exec.mockRejectedValue(new Error('t3 failed'));
 

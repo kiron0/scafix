@@ -65,6 +65,25 @@ describe.sequential('remixAdapter', () => {
     );
   });
 
+  it('always disables React Router git initialisation so root commands remain the single git owner', async () => {
+    await remixAdapter.create({
+      git: true,
+      packageManager: 'npm',
+      projectName: 'demo-remix-git',
+      yes: true,
+    });
+
+    expect(mocks.exec).toHaveBeenCalledWith(
+      'npx',
+      expect.arrayContaining([
+        'create-react-router@latest',
+        'demo-remix-git',
+        '--no-git-init',
+      ]),
+      expect.objectContaining({ cwd: tempDir, stdio: 'inherit' })
+    );
+  });
+
   it('cleans up on failure', async () => {
     mocks.exec.mockRejectedValue(new Error('remix failed'));
 

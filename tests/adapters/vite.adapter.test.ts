@@ -336,7 +336,41 @@ describe.sequential('viteReactAdapter', () => {
     expect(packageJson.name).toBe('marketing-site');
   });
 
-  it('cleans up the generated project directory when shadcn setup fails', async () => {
+  it('removes a scaffold-created git repository during direct adapter usage', async () => {
+    mocks.promptViteReactCustomizations.mockResolvedValue({
+      framework: 'react',
+      prettier: false,
+      shadcn: false,
+      tailwind: false,
+      typescript: true,
+    });
+    mocks.exec.mockImplementation(async (_command, args, options) => {
+      const projectName = args[2] as string | undefined;
+      if (!projectName || options?.cwd !== tempDir) {
+        return;
+      }
+
+      const projectPath = join(tempDir, projectName);
+      await mkdir(join(projectPath, '.git'), { recursive: true });
+      await mkdir(join(projectPath, 'src'), { recursive: true });
+      await writeFile(join(projectPath, 'src', 'index.css'), 'body {}\n');
+      await writeFile(join(projectPath, 'vite.config.js'), 'export default { plugins: [] }\n');
+      await writeFile(
+        join(projectPath, 'package.json'),
+        `${JSON.stringify({ name: projectName }, null, 2)}\n`
+      );
+    });
+
+    await viteReactAdapter.create({
+      packageManager: 'npm',
+      projectName: 'demo-vite-git',
+      yes: true,
+    });
+
+    await expect(access(join(tempDir, 'demo-vite-git', '.git'))).rejects.toThrow();
+  });
+
+  it('cleans up nested parent directories it created when shadcn setup fails', async () => {
     mocks.promptViteReactCustomizations.mockResolvedValue({
       framework: 'react',
       prettier: false,
@@ -366,13 +400,14 @@ describe.sequential('viteReactAdapter', () => {
 
     await expect(
       viteReactAdapter.create({
-        directory: 'demo-vite-failed',
+        directory: 'apps/demo-vite-failed',
         packageManager: 'npm',
         projectName: 'demo-vite-failed',
       })
     ).rejects.toThrow('shadcn init failed');
 
-    await expect(access(join(tempDir, 'demo-vite-failed'))).rejects.toThrow();
+    await expect(access(join(tempDir, 'apps', 'demo-vite-failed'))).rejects.toThrow();
+    await expect(access(join(tempDir, 'apps'))).rejects.toThrow();
   });
 
   it.each([

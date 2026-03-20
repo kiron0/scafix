@@ -134,6 +134,26 @@ describe.sequential('angularAdapter', () => {
     );
   });
 
+  it('always disables Angular CLI git initialisation so root commands remain the single git owner', async () => {
+    await angularAdapter.create({
+      git: true,
+      packageManager: 'npm',
+      projectName: 'demo-angular-git',
+      yes: true,
+    });
+
+    expect(mocks.exec).toHaveBeenCalledWith(
+      'npx',
+      expect.arrayContaining([
+        '@angular/cli@latest',
+        'new',
+        'demo-angular-git',
+        '--skip-git',
+      ]),
+      expect.objectContaining({ cwd: tempDir, stdio: 'inherit' })
+    );
+  });
+
   it('runs zard/ui setup when requested', async () => {
     mocks.promptAngularCustomizations.mockResolvedValue({
       style: 'css',

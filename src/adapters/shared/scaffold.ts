@@ -1,6 +1,7 @@
 import { existsSync } from 'fs';
 import { mkdir, readFile, rm, rmdir, writeFile } from 'fs/promises';
 import { dirname, join } from 'path';
+import { stripGeneratedGitDirectory } from '../../utils/git.js';
 import type { PackageManager } from '../../utils/package-manager.js';
 import { exec } from '../../utils/exec.js';
 import { getPreferredPackageJsonName } from '../../utils/validate.js';
@@ -21,6 +22,8 @@ export async function reconcileGeneratedPackageJsonName(
     packageJson.name = preferredName;
     await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
   }
+
+  await stripGeneratedGitDirectory(projectPath);
 }
 
 export async function createMissingParentDirectories(projectPath: string): Promise<string[]> {
