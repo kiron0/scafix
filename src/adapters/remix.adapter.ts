@@ -43,10 +43,11 @@ export const remixAdapter: StackAdapter = {
     logger.info(`Launching React Router's official CLI for: ${projectName}`);
     logger.info('');
 
+    const acceptDefaults = shouldAcceptPromptDefaults(options);
     await promptRemixCustomizations({
-      yes: shouldAcceptPromptDefaults(options),
+      yes: acceptDefaults,
     });
-    const yesFlag = options.yes ? ['--yes'] : [];
+    const yesFlag = acceptDefaults ? ['--yes'] : [];
 
     const projectPath = join(process.cwd(), directory);
     const { cmd, args } = getDlxCommand(

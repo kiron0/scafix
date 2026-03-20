@@ -62,33 +62,81 @@ function resolveViteTailwindVersionOverride(value: unknown): 'v3' | 'v4' | undef
   return resolveChoiceOverride(value, 'tailwind-version', ['v3', 'v4']);
 }
 
+type ViteTemplateId = 'react' | 'react-ts' | 'vue' | 'vue-ts';
+
+function resolveViteTemplateOverride(value: unknown): ViteTemplateId | undefined {
+  return resolveChoiceOverride(value, 'template', ['react', 'react-ts', 'vue', 'vue-ts']);
+}
+
+function getViteTemplateShape(template: ViteTemplateId): {
+  framework: 'react' | 'vue';
+  typescript: boolean;
+} {
+  return template === 'react'
+    ? { framework: 'react', typescript: false }
+    : template === 'react-ts'
+      ? { framework: 'react', typescript: true }
+      : template === 'vue'
+        ? { framework: 'vue', typescript: false }
+        : { framework: 'vue', typescript: true };
+}
+
+function assertNoConflictingViteOverrides(options: CreateOptions): void {
+  const templateOverride = resolveViteTemplateOverride(options.template);
+  const frameworkOverride = resolveViteFrameworkOverride(options.framework);
+  const typescriptOverride = resolveBooleanOverride(options.typescript);
+  const shadcnOverride = resolveBooleanOverride(options.shadcn);
+  const shadcnVueOverride = resolveBooleanOverride(options.shadcnVue);
+
+  if (templateOverride !== undefined) {
+    const templateShape = getViteTemplateShape(templateOverride);
+
+    if (frameworkOverride !== undefined && frameworkOverride !== templateShape.framework) {
+      throw new Error(
+        `Conflicting Vite overrides: --template ${templateOverride} cannot be combined with --framework ${frameworkOverride}`
+      );
+    }
+
+    if (typescriptOverride !== undefined && typescriptOverride !== templateShape.typescript) {
+      throw new Error(
+        `Conflicting Vite overrides: --template ${templateOverride} cannot be combined with --${
+          typescriptOverride ? 'typescript' : 'no-typescript'
+        }`
+      );
+    }
+
+    if (shadcnVueOverride && templateShape.framework !== 'vue') {
+      throw new Error(
+        `Conflicting Vite overrides: --template ${templateOverride} cannot be combined with --shadcn-vue`
+      );
+    }
+  }
+
+  if (frameworkOverride === 'react' && shadcnVueOverride) {
+    throw new Error(
+      'Conflicting Vite overrides: --framework react cannot be combined with --shadcn-vue'
+    );
+  }
+
+  if (shadcnOverride === false && shadcnVueOverride) {
+    throw new Error(
+      'Conflicting Vite overrides: --no-shadcn cannot be combined with --shadcn-vue'
+    );
+  }
+}
+
 function applyViteCustomizationOverrides(
   customizations: Awaited<ReturnType<typeof promptViteReactCustomizations>>,
   options: CreateOptions
 ): Awaited<ReturnType<typeof promptViteReactCustomizations>> {
+  assertNoConflictingViteOverrides(options);
+
   let framework = customizations.framework;
   let typescript = customizations.typescript;
-  const templateOverride = resolveChoiceOverride(options.template, 'template', [
-    'react',
-    'react-ts',
-    'vue',
-    'vue-ts',
-  ]);
+  const templateOverride = resolveViteTemplateOverride(options.template);
 
   if (templateOverride !== undefined) {
-    if (templateOverride === 'react') {
-      framework = 'react';
-      typescript = false;
-    } else if (templateOverride === 'react-ts') {
-      framework = 'react';
-      typescript = true;
-    } else if (templateOverride === 'vue') {
-      framework = 'vue';
-      typescript = false;
-    } else if (templateOverride === 'vue-ts') {
-      framework = 'vue';
-      typescript = true;
-    }
+    ({ framework, typescript } = getViteTemplateShape(templateOverride));
   }
 
   framework = resolveViteFrameworkOverride(options.framework) ?? framework;

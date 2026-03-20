@@ -29,12 +29,20 @@ vi.mock('../../src/prompts/customizations.js', () => ({
 
 import { astroAdapter } from '../../src/adapters/astro.adapter.js';
 
+function setStdinTty(value: boolean): void {
+  Object.defineProperty(process.stdin, 'isTTY', {
+    configurable: true,
+    value,
+  });
+}
+
 describe.sequential('astroAdapter', () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;
   let tempDir: string;
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    setStdinTty(true);
     mocks.promptAstroCustomizations.mockResolvedValue({
       template: 'minimal',
     });
@@ -180,6 +188,37 @@ describe.sequential('astroAdapter', () => {
         'blog',
         '--install',
         '--no-git',
+      ],
+      expect.objectContaining({
+        cwd: tempDir,
+        stdio: 'inherit',
+      })
+    );
+  });
+
+  it('passes upstream --yes when stdin is not a TTY so scripted Astro creates stay non-interactive', async () => {
+    setStdinTty(false);
+
+    await astroAdapter.create({
+      packageManager: 'npm',
+      projectName: 'demo-astro-non-tty',
+    });
+
+    expect(mocks.promptAstroCustomizations).toHaveBeenCalledWith({
+      yes: true,
+    });
+    expect(mocks.exec).toHaveBeenCalledWith(
+      'npm',
+      [
+        'create',
+        'astro@latest',
+        'demo-astro-non-tty',
+        '--',
+        '--template',
+        'minimal',
+        '--install',
+        '--no-git',
+        '--yes',
       ],
       expect.objectContaining({
         cwd: tempDir,

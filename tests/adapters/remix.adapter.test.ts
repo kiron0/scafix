@@ -23,12 +23,20 @@ vi.mock('../../src/prompts/customizations.js', () => ({
 
 import { remixAdapter } from '../../src/adapters/remix.adapter.js';
 
+function setStdinTty(value: boolean): void {
+  Object.defineProperty(process.stdin, 'isTTY', {
+    configurable: true,
+    value,
+  });
+}
+
 describe.sequential('remixAdapter', () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;
   let tempDir: string;
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    setStdinTty(true);
     mocks.promptRemixCustomizations.mockResolvedValue({ template: 'remix' });
     tempDir = await mkdtemp(join(tmpdir(), 'scafix-remix-adapter-'));
     cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(tempDir);
@@ -84,6 +92,28 @@ describe.sequential('remixAdapter', () => {
         'create-react-router@latest',
         'demo-remix-git',
         '--no-git-init',
+      ]),
+      expect.objectContaining({ cwd: tempDir, stdio: 'inherit' })
+    );
+  });
+
+  it('passes upstream --yes when stdin is not a TTY so scripted Remix creates stay non-interactive', async () => {
+    setStdinTty(false);
+
+    await remixAdapter.create({
+      packageManager: 'npm',
+      projectName: 'demo-remix-non-tty',
+    });
+
+    expect(mocks.promptRemixCustomizations).toHaveBeenCalledWith({
+      yes: true,
+    });
+    expect(mocks.exec).toHaveBeenCalledWith(
+      'npx',
+      expect.arrayContaining([
+        'create-react-router@latest',
+        'demo-remix-non-tty',
+        '--yes',
       ]),
       expect.objectContaining({ cwd: tempDir, stdio: 'inherit' })
     );

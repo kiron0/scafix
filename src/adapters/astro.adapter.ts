@@ -50,14 +50,15 @@ export const astroAdapter: StackAdapter = {
     logger.info(`Launching Astro's official CLI for: ${projectName}`);
     logger.info('');
 
+    const acceptDefaults = shouldAcceptPromptDefaults(options);
     const promptedCustomizations = await promptAstroCustomizations({
-      yes: shouldAcceptPromptDefaults(options),
+      yes: acceptDefaults,
     });
     const customizations = {
       ...promptedCustomizations,
       template: resolveAstroTemplateOverride(options.template) ?? promptedCustomizations.template,
     };
-    const yesFlag = options.yes ? ['--yes'] : [];
+    const yesFlag = acceptDefaults ? ['--yes'] : [];
 
     const pmCommands: Record<string, { cmd: string; args: string[] }> = {
       npm: {

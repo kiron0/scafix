@@ -336,6 +336,30 @@ describe.sequential('viteReactAdapter', () => {
     expect(packageJson.name).toBe('marketing-site');
   });
 
+  it('rejects conflicting template and framework overrides instead of silently scaffolding a different app', async () => {
+    mocks.promptViteReactCustomizations.mockResolvedValue({
+      framework: 'react',
+      prettier: false,
+      shadcn: false,
+      tailwind: false,
+      typescript: true,
+    });
+
+    await expect(
+      viteReactAdapter.create({
+        framework: 'vue',
+        packageManager: 'npm',
+        projectName: 'demo-vite-conflict',
+        template: 'react',
+        yes: true,
+      })
+    ).rejects.toThrow(
+      'Conflicting Vite overrides: --template react cannot be combined with --framework vue'
+    );
+
+    expect(mocks.exec).not.toHaveBeenCalled();
+  });
+
   it('removes a scaffold-created git repository during direct adapter usage', async () => {
     mocks.promptViteReactCustomizations.mockResolvedValue({
       framework: 'react',
