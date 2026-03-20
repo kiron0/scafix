@@ -10,6 +10,7 @@ import {
 import type { CliOptions, CreateOptions } from '../types/stack.js';
 import { exec } from '../utils/exec.js';
 import { CliExitError, isCliExitError } from '../utils/cli-error.js';
+import { stripGeneratedGitDirectory } from '../utils/git.js';
 import { logger } from '../utils/logger.js';
 import {
   detectPackageManagerFromCwd,
@@ -161,14 +162,18 @@ export async function createCommand(
       git,
     };
 
+    const projectPath = join(process.cwd(), directory);
+
     // Create the project
     await adapter.create(createOptions);
+
+    // Keep root commands as the single owner of git initialisation.
+    await stripGeneratedGitDirectory(projectPath);
 
     // Initialize Git if requested
     if (git) {
       const gitSpinner = spinner();
       gitSpinner.start('Initializing Git repository...');
-      const projectPath = join(process.cwd(), directory);
       try {
         await exec('git', ['init'], { cwd: projectPath, stdio: 'pipe' });
         gitSpinner.stop('Git repository initialized');

@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   promptGit: vi.fn(),
   promptPackageManager: vi.fn(),
   promptProjectName: vi.fn(),
+  stripGeneratedGitDirectory: vi.fn(),
   validateDirectory: vi.fn(),
   validateNpmPackageName: vi.fn(),
   validateProjectName: vi.fn(),
@@ -47,6 +48,10 @@ vi.mock('../../src/utils/exec.js', () => ({
 
 vi.mock('../../src/utils/logger.js', () => ({
   logger: mocks.logger,
+}));
+
+vi.mock('../../src/utils/git.js', () => ({
+  stripGeneratedGitDirectory: mocks.stripGeneratedGitDirectory,
 }));
 
 vi.mock('../../src/utils/package-manager.js', async () => {
@@ -88,6 +93,7 @@ describe('createCommand', () => {
     mocks.promptGit.mockResolvedValue(false);
     mocks.promptPackageManager.mockResolvedValue('npm');
     mocks.promptProjectName.mockResolvedValue('demo-app');
+    mocks.stripGeneratedGitDirectory.mockResolvedValue(undefined);
     mocks.getDefaultDirectoryName.mockImplementation((name: string) => name);
     mocks.validateDirectory.mockReturnValue({
       exists: false,
@@ -140,8 +146,11 @@ describe('createCommand', () => {
         git: true,
       })
     );
+    expect(mocks.stripGeneratedGitDirectory).toHaveBeenCalledWith(
+      expect.stringMatching(/[\\/]demo-app$/)
+    );
     expect(mocks.exec).toHaveBeenCalledWith('git', ['init'], {
-      cwd: expect.stringContaining('/demo-app'),
+      cwd: expect.stringMatching(/[\\/]demo-app$/),
       stdio: 'pipe',
     });
   });
@@ -158,6 +167,9 @@ describe('createCommand', () => {
       expect.objectContaining({
         git: false,
       })
+    );
+    expect(mocks.stripGeneratedGitDirectory).toHaveBeenCalledWith(
+      expect.stringMatching(/[\\/]demo-app$/)
     );
     expect(mocks.exec).not.toHaveBeenCalled();
   });

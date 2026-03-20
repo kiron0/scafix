@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   promptPackageManager: vi.fn(),
   promptProjectName: vi.fn(),
   selectStack: vi.fn(),
+  stripGeneratedGitDirectory: vi.fn(),
   validateDirectory: vi.fn(),
   validateNpmPackageName: vi.fn(),
   validateProjectName: vi.fn(),
@@ -56,6 +57,10 @@ vi.mock('../../src/utils/exec.js', () => ({
 
 vi.mock('../../src/utils/logger.js', () => ({
   logger: mocks.logger,
+}));
+
+vi.mock('../../src/utils/git.js', () => ({
+  stripGeneratedGitDirectory: mocks.stripGeneratedGitDirectory,
 }));
 
 vi.mock('../../src/utils/package-manager.js', async () => {
@@ -92,6 +97,7 @@ describe('initCommand', () => {
     mocks.promptGit.mockResolvedValue(false);
     mocks.promptPackageManager.mockResolvedValue('npm');
     mocks.promptProjectName.mockResolvedValue('my-project');
+    mocks.stripGeneratedGitDirectory.mockResolvedValue(undefined);
     mocks.getDefaultDirectoryName.mockImplementation((name: string) => name);
     mocks.validateDirectory.mockReturnValue({
       exists: false,
@@ -141,6 +147,9 @@ describe('initCommand', () => {
         projectName: 'custom-name',
       })
     );
+    expect(mocks.stripGeneratedGitDirectory).toHaveBeenCalledWith(
+      expect.stringMatching(/[\\/]custom-dir$/)
+    );
   });
 
   it('returns early when the project-name prompt is cancelled', async () => {
@@ -174,6 +183,9 @@ describe('initCommand', () => {
       expect.objectContaining({
         packageManager: 'bun',
       })
+    );
+    expect(mocks.stripGeneratedGitDirectory).toHaveBeenCalledWith(
+      expect.stringMatching(/[\\/]my-project$/)
     );
   });
 
