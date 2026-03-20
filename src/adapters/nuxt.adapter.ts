@@ -11,6 +11,12 @@ import {
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
 
+function resolveNuxtTemplateOverride(
+  value: unknown
+): Awaited<ReturnType<typeof promptNuxtCustomizations>>['template'] | undefined {
+  return value === 'minimal' || value === 'content' || value === 'ui' ? value : undefined;
+}
+
 export const nuxtAdapter: StackAdapter = {
   id: 'nuxt',
   name: 'Nuxt',
@@ -37,9 +43,13 @@ export const nuxtAdapter: StackAdapter = {
     logger.info(`Launching Nuxt's official CLI for: ${projectName}`);
     logger.info('');
 
-    const customizations = await promptNuxtCustomizations({
+    const promptedCustomizations = await promptNuxtCustomizations({
       yes: options.yes,
     });
+    const customizations = {
+      ...promptedCustomizations,
+      template: resolveNuxtTemplateOverride(options.template) ?? promptedCustomizations.template,
+    };
     const commonArgs = [
       '--template',
       customizations.template,

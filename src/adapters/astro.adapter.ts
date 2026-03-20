@@ -11,6 +11,12 @@ import {
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
 
+function resolveAstroTemplateOverride(
+  value: unknown
+): Awaited<ReturnType<typeof promptAstroCustomizations>>['template'] | undefined {
+  return value === 'minimal' || value === 'blog' || value === 'docs' ? value : undefined;
+}
+
 export const astroAdapter: StackAdapter = {
   id: 'astro',
   name: 'Astro',
@@ -37,9 +43,13 @@ export const astroAdapter: StackAdapter = {
     logger.info(`Launching Astro's official CLI for: ${projectName}`);
     logger.info('');
 
-    const customizations = await promptAstroCustomizations({
+    const promptedCustomizations = await promptAstroCustomizations({
       yes: options.yes,
     });
+    const customizations = {
+      ...promptedCustomizations,
+      template: resolveAstroTemplateOverride(options.template) ?? promptedCustomizations.template,
+    };
     const yesFlag = options.yes ? ['--yes'] : [];
 
     const pmCommands: Record<string, { cmd: string; args: string[] }> = {

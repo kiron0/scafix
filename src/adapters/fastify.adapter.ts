@@ -12,6 +12,10 @@ import {
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
 
+function resolveBooleanOverride(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined;
+}
+
 export const fastifyAdapter: StackAdapter = {
   id: 'fastify',
   name: 'Fastify',
@@ -38,9 +42,18 @@ export const fastifyAdapter: StackAdapter = {
     logger.info(`Launching Fastify CLI for: ${projectName}`);
     logger.info('');
 
-    const customizations = await promptFastifyCustomizations({
+    const promptedCustomizations = await promptFastifyCustomizations({
       yes: options.yes,
     });
+    const customizations = {
+      ...promptedCustomizations,
+      language:
+        resolveBooleanOverride(options.typescript) === undefined
+          ? promptedCustomizations.language
+          : resolveBooleanOverride(options.typescript)
+            ? 'ts'
+            : 'js',
+    };
     const langFlag = customizations.language === 'ts' ? ['--lang=ts'] : [];
     const projectPath = join(process.cwd(), directory);
     let createdParentDirectories: string[] = [];

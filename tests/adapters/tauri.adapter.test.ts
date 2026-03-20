@@ -63,6 +63,11 @@ describe.sequential('tauriAdapter', () => {
       expect.arrayContaining(['create', 'tauri-app@latest', 'demo-tauri']),
       expect.objectContaining({ cwd: tempDir, stdio: 'inherit' })
     );
+    expect(mocks.exec).toHaveBeenCalledWith(
+      'npm',
+      ['install'],
+      expect.objectContaining({ cwd: join(tempDir, 'demo-tauri'), stdio: 'inherit' })
+    );
   });
 
   it('removes a scaffold-created git repository during direct adapter usage', async () => {

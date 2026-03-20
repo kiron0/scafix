@@ -40,6 +40,26 @@ describe.sequential('built CLI root wiring', () => {
     expect(result.stdout).toContain('--debug');
   });
 
+  it('advertises stack override options in create help output', () => {
+    const result = runCli(['create', '--help']);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('--template <template>');
+    expect(result.stdout).toContain('--framework <framework>');
+    expect(result.stdout).toContain('--tailwind');
+    expect(result.stdout).toContain('--style <style>');
+    expect(result.stdout).toContain('--build-tool <buildTool>');
+    expect(result.stdout).toContain('--test-framework <testFramework>');
+  });
+
+  it('accepts stack override flags at the CLI parse layer', () => {
+    const result = runCli(['create', 'next', '--tailwind', '--typescript', '--help']);
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).not.toContain("unknown option '--tailwind'");
+    expect(result.stderr).not.toContain("unknown option '--typescript'");
+  });
+
   it('routes root --yes through the CLI error flow instead of commander', () => {
     const result = runCli(['--yes']);
 

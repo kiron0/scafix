@@ -11,6 +11,14 @@ import {
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
 
+function resolveHonoTemplateOverride(
+  value: unknown
+): Awaited<ReturnType<typeof promptHonoCustomizations>>['template'] | undefined {
+  return value === 'nodejs' || value === 'bun' || value === 'cloudflare-workers' || value === 'vercel'
+    ? value
+    : undefined;
+}
+
 export const honoAdapter: StackAdapter = {
   id: 'hono',
   name: 'Hono',
@@ -37,9 +45,13 @@ export const honoAdapter: StackAdapter = {
     logger.info(`Launching Hono's official CLI for: ${projectName}`);
     logger.info('');
 
-    const customizations = await promptHonoCustomizations({
+    const promptedCustomizations = await promptHonoCustomizations({
       yes: options.yes,
     });
+    const customizations = {
+      ...promptedCustomizations,
+      template: resolveHonoTemplateOverride(options.template) ?? promptedCustomizations.template,
+    };
     const commonArgs = ['--template', customizations.template, '--install', '--pm', packageManager];
     const pmCommands: Record<string, { cmd: string; args: string[] }> = {
       npm: {

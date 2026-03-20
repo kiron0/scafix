@@ -29,7 +29,7 @@ describe.sequential('expoAdapter', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    mocks.promptExpoCustomizations.mockResolvedValue({ template: 'default' });
+    mocks.promptExpoCustomizations.mockResolvedValue({ template: 'default@sdk-55' });
     tempDir = await mkdtemp(join(tmpdir(), 'scafix-expo-adapter-'));
     cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(tempDir);
     mocks.exec.mockImplementation(
@@ -60,7 +60,14 @@ describe.sequential('expoAdapter', () => {
 
     expect(mocks.exec).toHaveBeenCalledWith(
       'npx',
-      ['--yes', 'create-expo-app@latest', 'demo-expo-npm'],
+      [
+        '--yes',
+        'create-expo-app@latest',
+        'demo-expo-npm',
+        '--template',
+        'default@sdk-55',
+        '--yes',
+      ],
       expect.objectContaining({ cwd: tempDir, stdio: 'inherit' })
     );
   });
@@ -77,6 +84,21 @@ describe.sequential('expoAdapter', () => {
       await readFile(join(tempDir, 'apps', 'my-app', 'package.json'), 'utf8')
     ) as { name: string };
     expect(packageJson.name).toBe('my-app');
+  });
+
+  it('applies an explicit template override on top of prompt defaults', async () => {
+    await expoAdapter.create({
+      packageManager: 'npm',
+      projectName: 'demo-expo-blank',
+      template: 'blank',
+      yes: true,
+    });
+
+    expect(mocks.exec).toHaveBeenCalledWith(
+      'npx',
+      ['--yes', 'create-expo-app@latest', 'demo-expo-blank', '--template', 'blank', '--yes'],
+      expect.objectContaining({ cwd: tempDir, stdio: 'inherit' })
+    );
   });
 
   it('removes a scaffold-created git repository during direct adapter usage', async () => {

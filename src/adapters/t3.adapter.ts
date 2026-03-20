@@ -12,6 +12,23 @@ import {
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
 
+function resolveBooleanOverride(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined;
+}
+
+function setPackageSelection(packages: string[], name: string, enabled: boolean | undefined): string[] {
+  if (enabled === undefined) {
+    return packages;
+  }
+
+  const nextPackages = packages.filter((pkg) => pkg !== name);
+  if (enabled) {
+    nextPackages.push(name);
+  }
+
+  return nextPackages;
+}
+
 export const t3Adapter: StackAdapter = {
   id: 't3',
   name: 'T3 Stack',
@@ -38,9 +55,30 @@ export const t3Adapter: StackAdapter = {
     logger.info(`Launching T3 Stack CLI for: ${projectName}`);
     logger.info('');
 
-    const customizations = await promptT3Customizations({
+    const promptedCustomizations = await promptT3Customizations({
       yes: options.yes,
     });
+    const customizations = {
+      ...promptedCustomizations,
+      packages: setPackageSelection(
+        setPackageSelection(
+          setPackageSelection(
+            setPackageSelection(
+              promptedCustomizations.packages,
+              'tailwind',
+              resolveBooleanOverride(options.tailwind)
+            ),
+            'trpc',
+            resolveBooleanOverride(options.trpc)
+          ),
+          'prisma',
+          resolveBooleanOverride(options.prisma)
+        ),
+        'nextAuth',
+        resolveBooleanOverride(options.nextAuth)
+      ),
+      appRouter: resolveBooleanOverride(options.appRouter) ?? promptedCustomizations.appRouter,
+    };
     const hasPackage = (pkg: string): boolean => customizations.packages.includes(pkg);
     const projectPath = join(process.cwd(), directory);
     let createdParentDirectories: string[] = [];

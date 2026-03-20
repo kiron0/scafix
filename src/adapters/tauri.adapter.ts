@@ -8,8 +8,24 @@ import { validateDirectory, validateProjectName } from '../utils/validate.js';
 import {
   cleanupFailedScaffold,
   createMissingParentDirectories,
+  installProjectDependencies,
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
+
+function resolveTauriTemplateOverride(
+  value: unknown
+): Awaited<ReturnType<typeof promptTauriCustomizations>>['template'] | undefined {
+  return value === 'vanilla' ||
+    value === 'vanilla-ts' ||
+    value === 'react' ||
+    value === 'react-ts' ||
+    value === 'vue' ||
+    value === 'vue-ts' ||
+    value === 'svelte' ||
+    value === 'svelte-ts'
+    ? value
+    : undefined;
+}
 
 export const tauriAdapter: StackAdapter = {
   id: 'tauri',
@@ -37,9 +53,13 @@ export const tauriAdapter: StackAdapter = {
     logger.info(`Launching Tauri's official CLI for: ${projectName}`);
     logger.info('');
 
-    const customizations = await promptTauriCustomizations({
+    const promptedCustomizations = await promptTauriCustomizations({
       yes: options.yes,
     });
+    const customizations = {
+      ...promptedCustomizations,
+      template: resolveTauriTemplateOverride(options.template) ?? promptedCustomizations.template,
+    };
     const managerFlag =
       packageManager === 'bun'
         ? ['--manager', 'bun']
@@ -109,6 +129,7 @@ export const tauriAdapter: StackAdapter = {
       createdParentDirectories = await createMissingParentDirectories(projectPath);
       await exec(cmd, args, { cwd: process.cwd(), stdio: 'inherit' });
       await reconcileGeneratedPackageJsonName(projectPath, projectName, directory);
+      await installProjectDependencies(projectPath, packageManager);
     } catch (error) {
       await cleanupFailedScaffold(projectPath, createdParentDirectories);
       throw error;

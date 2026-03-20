@@ -11,6 +11,14 @@ import {
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
 
+function resolveExpoTemplateOverride(
+  value: unknown
+): Awaited<ReturnType<typeof promptExpoCustomizations>>['template'] | undefined {
+  return value === 'default@sdk-55' || value === 'blank' || value === 'tabs' || value === 'bare-minimum'
+    ? value
+    : undefined;
+}
+
 export const expoAdapter: StackAdapter = {
   id: 'expo',
   name: 'Expo',
@@ -37,28 +45,32 @@ export const expoAdapter: StackAdapter = {
     logger.info(`Launching Expo's official CLI for: ${projectName}`);
     logger.info('');
 
-    const customizations = await promptExpoCustomizations({
+    const promptedCustomizations = await promptExpoCustomizations({
       yes: options.yes,
     });
-    const templateArgs =
-      customizations.template !== 'default' ? ['--template', customizations.template] : [];
+    const customizations = {
+      ...promptedCustomizations,
+      template: resolveExpoTemplateOverride(options.template) ?? promptedCustomizations.template,
+    };
+    const templateArgs = ['--template', customizations.template];
+    const yesArgs = ['--yes'];
 
     const pmCommands: Record<string, { cmd: string; args: string[] }> = {
       npm: {
         cmd: 'npx',
-        args: ['--yes', 'create-expo-app@latest', directory, ...templateArgs],
+        args: ['--yes', 'create-expo-app@latest', directory, ...templateArgs, ...yesArgs],
       },
       pnpm: {
         cmd: 'pnpm',
-        args: ['create', 'expo-app@latest', directory, ...templateArgs],
+        args: ['create', 'expo-app@latest', directory, ...templateArgs, ...yesArgs],
       },
       yarn: {
         cmd: 'yarn',
-        args: ['create', 'expo-app', directory, ...templateArgs],
+        args: ['create', 'expo-app', directory, ...templateArgs, ...yesArgs],
       },
       bun: {
         cmd: 'bun',
-        args: ['create', 'expo-app@latest', directory, ...templateArgs],
+        args: ['create', 'expo-app@latest', directory, ...templateArgs, ...yesArgs],
       },
     };
 

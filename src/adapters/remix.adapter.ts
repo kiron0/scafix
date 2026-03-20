@@ -9,6 +9,7 @@ import { validateDirectory, validateProjectName } from '../utils/validate.js';
 import {
   cleanupFailedScaffold,
   createMissingParentDirectories,
+  installProjectDependencies,
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
 
@@ -66,6 +67,7 @@ export const remixAdapter: StackAdapter = {
       createdParentDirectories = await createMissingParentDirectories(projectPath);
       await exec(cmd, args, { cwd: process.cwd(), stdio: 'inherit' });
       await reconcileGeneratedPackageJsonName(projectPath, projectName, directory);
+      await installProjectDependencies(projectPath, packageManager);
     } catch (error) {
       await cleanupFailedScaffold(projectPath, createdParentDirectories);
       throw error;

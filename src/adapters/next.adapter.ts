@@ -14,6 +14,40 @@ import {
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
 
+function resolveBooleanOverride(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined;
+}
+
+function applyNextCustomizationOverrides(
+  customizations: Awaited<ReturnType<typeof promptNextCustomizations>>,
+  options: CreateOptions
+): Awaited<ReturnType<typeof promptNextCustomizations>> {
+  return {
+    ...customizations,
+    ...(resolveBooleanOverride(options.typescript) === undefined
+      ? {}
+      : { typescript: resolveBooleanOverride(options.typescript) }),
+    ...(resolveBooleanOverride(options.tailwind) === undefined
+      ? {}
+      : { tailwind: resolveBooleanOverride(options.tailwind) }),
+    ...(resolveBooleanOverride(options.shadcn) === undefined
+      ? {}
+      : { shadcn: resolveBooleanOverride(options.shadcn) }),
+    ...(resolveBooleanOverride(options.eslint) === undefined
+      ? {}
+      : { eslint: resolveBooleanOverride(options.eslint) }),
+    ...(resolveBooleanOverride(options.prettier) === undefined
+      ? {}
+      : { prettier: resolveBooleanOverride(options.prettier) }),
+    ...(resolveBooleanOverride(options.appRouter) === undefined
+      ? {}
+      : { appRouter: resolveBooleanOverride(options.appRouter) }),
+    ...(resolveBooleanOverride(options.srcDir) === undefined
+      ? {}
+      : { srcDir: resolveBooleanOverride(options.srcDir) }),
+  };
+}
+
 async function setupPrettier(projectPath: string, packageManager: string): Promise<void> {
   const s = spinner();
   s.start('Setting up Prettier...');
@@ -69,9 +103,12 @@ export const nextAdapter: StackAdapter = {
       throw new CliExitError(1);
     }
 
-    const customizations = await promptNextCustomizations({
-      yes: options.yes,
-    });
+    const customizations = applyNextCustomizationOverrides(
+      await promptNextCustomizations({
+        yes: options.yes,
+      }),
+      options
+    );
 
     logger.info(`Launching Next.js's official CLI for: ${projectName}`);
     logger.info('');

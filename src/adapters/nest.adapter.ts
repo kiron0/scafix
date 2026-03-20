@@ -12,6 +12,10 @@ import {
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
 
+function resolveBooleanOverride(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined;
+}
+
 export const nestAdapter: StackAdapter = {
   id: 'nest',
   name: 'NestJS',
@@ -38,9 +42,19 @@ export const nestAdapter: StackAdapter = {
     logger.info(`Launching NestJS's official CLI for: ${projectName}`);
     logger.info('');
 
-    const customizations = await promptNestCustomizations({
+    const promptedCustomizations = await promptNestCustomizations({
       yes: options.yes,
     });
+    const customizations = {
+      ...promptedCustomizations,
+      language:
+        resolveBooleanOverride(options.typescript) === undefined
+          ? promptedCustomizations.language
+          : resolveBooleanOverride(options.typescript)
+            ? 'ts'
+            : 'js',
+      strict: resolveBooleanOverride(options.strict) ?? promptedCustomizations.strict,
+    };
     const scaffoldPackageManager = packageManager === 'bun' ? 'npm' : packageManager;
     const projectPath = join(process.cwd(), directory);
     let createdParentDirectories: string[] = [];

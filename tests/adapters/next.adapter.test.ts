@@ -115,6 +115,72 @@ describe.sequential('nextAdapter', () => {
     );
   });
 
+  it('applies explicit customization overrides on top of prompt defaults', async () => {
+    mocks.promptNextCustomizations.mockResolvedValue({
+      appRouter: true,
+      eslint: true,
+      prettier: false,
+      shadcn: false,
+      srcDir: true,
+      tailwind: true,
+      typescript: true,
+    });
+
+    await nextAdapter.create({
+      appRouter: false,
+      directory: 'demo-next-overrides',
+      eslint: false,
+      packageManager: 'npm',
+      prettier: true,
+      projectName: 'demo-next-overrides',
+      shadcn: true,
+      srcDir: false,
+      tailwind: false,
+      typescript: false,
+      yes: true,
+    });
+
+    const projectPath = join(tempDir, 'demo-next-overrides');
+
+    expect(mocks.exec).toHaveBeenCalledWith(
+      'npx',
+      [
+        'create-next-app@latest',
+        'demo-next-overrides',
+        '--js',
+        '--no-eslint',
+        '--no-app',
+        '--no-src-dir',
+        '--no-tailwind',
+        '--import-alias',
+        '@/*',
+        '--use-npm',
+        '--disable-git',
+        '--yes',
+      ],
+      expect.objectContaining({
+        cwd: tempDir,
+        stdio: 'inherit',
+      })
+    );
+    expect(mocks.exec).toHaveBeenCalledWith(
+      'npm',
+      ['install', '--save-dev', 'prettier'],
+      expect.objectContaining({
+        cwd: projectPath,
+        stdio: 'pipe',
+      })
+    );
+    expect(mocks.exec).toHaveBeenCalledWith(
+      'npx',
+      ['--yes', 'shadcn@latest', 'init', '--defaults', '--yes', '--template', 'next', '--cwd', projectPath],
+      expect.objectContaining({
+        cwd: projectPath,
+        stdio: 'inherit',
+      })
+    );
+  });
+
   it.each([
     {
       args: [

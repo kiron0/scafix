@@ -64,7 +64,7 @@ export interface NpmPackageCustomizations {
 }
 
 export interface ExpoCustomizations {
-  template: 'default' | 'blank' | 'tabs' | 'bare-minimum';
+  template: 'default@sdk-55' | 'blank' | 'tabs' | 'bare-minimum';
 }
 
 export interface RemixCustomizations {
@@ -691,14 +691,14 @@ export async function promptExpoCustomizations(
   options: { yes?: boolean } = {}
 ): Promise<ExpoCustomizations> {
   if (options.yes) {
-    return { template: 'default' };
+    return { template: 'default@sdk-55' };
   }
 
   try {
     const templateResponse = await select({
       message: 'Select Expo template:',
       options: [
-        { label: 'Default', hint: 'Recommended Expo starter', value: 'default' },
+        { label: 'Default', hint: 'Recommended Expo starter (SDK 55)', value: 'default@sdk-55' },
         { label: 'Blank', hint: 'Minimal blank project', value: 'blank' },
         { label: 'Tabs', hint: 'Tab navigation starter', value: 'tabs' },
         { label: 'Bare minimum', hint: 'Bare React Native project', value: 'bare-minimum' },
@@ -707,7 +707,8 @@ export async function promptExpoCustomizations(
 
     return {
       template:
-        (unwrapPromptResponse(templateResponse) as ExpoCustomizations['template']) ?? 'default',
+        (unwrapPromptResponse(templateResponse) as ExpoCustomizations['template']) ??
+        'default@sdk-55',
     };
   } catch (error) {
     if (isPromptCancelledError(error)) {

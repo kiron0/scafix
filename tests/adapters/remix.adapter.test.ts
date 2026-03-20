@@ -63,6 +63,11 @@ describe.sequential('remixAdapter', () => {
       expect.arrayContaining(['create-react-router@latest', 'demo-remix']),
       expect.objectContaining({ cwd: tempDir, stdio: 'inherit' })
     );
+    expect(mocks.exec).toHaveBeenCalledWith(
+      'npm',
+      ['install'],
+      expect.objectContaining({ cwd: join(tempDir, 'demo-remix'), stdio: 'inherit' })
+    );
   });
 
   it('always disables React Router git initialisation so root commands remain the single git owner', async () => {

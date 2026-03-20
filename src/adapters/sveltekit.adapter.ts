@@ -12,6 +12,22 @@ import {
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
 
+function resolveBooleanOverride(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined;
+}
+
+function resolveSvelteKitTemplateOverride(
+  value: unknown
+): Awaited<ReturnType<typeof promptSvelteKitCustomizations>>['template'] | undefined {
+  return value === 'minimal' || value === 'demo' || value === 'library' ? value : undefined;
+}
+
+function resolveSvelteKitTypesOverride(
+  value: unknown
+): Awaited<ReturnType<typeof promptSvelteKitCustomizations>>['types'] | undefined {
+  return value === 'ts' || value === 'jsdoc' ? value : undefined;
+}
+
 export const sveltekitAdapter: StackAdapter = {
   id: 'sveltekit',
   name: 'SvelteKit',
@@ -38,9 +54,21 @@ export const sveltekitAdapter: StackAdapter = {
     logger.info(`Launching SvelteKit's official CLI for: ${projectName}`);
     logger.info('');
 
-    const customizations = await promptSvelteKitCustomizations({
+    const promptedCustomizations = await promptSvelteKitCustomizations({
       yes: options.yes,
     });
+    const customizations = {
+      ...promptedCustomizations,
+      template:
+        resolveSvelteKitTemplateOverride(options.template) ?? promptedCustomizations.template,
+      types:
+        resolveSvelteKitTypesOverride(options.types) ??
+        (resolveBooleanOverride(options.typescript) === undefined
+          ? promptedCustomizations.types
+          : resolveBooleanOverride(options.typescript)
+            ? 'ts'
+            : 'jsdoc'),
+    };
     const yarnFlavor = packageManager === 'yarn' ? detectYarnFlavor() : undefined;
     const addArgs =
       customizations.template === 'minimal' ? ['--no-add-ons'] : ['--add', 'prettier', 'eslint'];
