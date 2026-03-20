@@ -11,7 +11,11 @@ import {
   createMissingParentDirectories,
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
-import { resolveChoiceOverride, shouldAcceptPromptDefaults } from './shared/prompting.js';
+import {
+  assertSupportedOverrides,
+  resolveChoiceOverride,
+  shouldAcceptPromptDefaults,
+} from './shared/prompting.js';
 
 function resolveBooleanOverride(value: unknown): boolean | undefined {
   return typeof value === 'boolean' ? value : undefined;
@@ -51,6 +55,8 @@ export const sveltekitAdapter: StackAdapter = {
       logger.info(`Please choose a different project name or remove the existing directory.`);
       throw new CliExitError(1);
     }
+
+    assertSupportedOverrides(options, ['template', 'types', 'typescript']);
 
     logger.info(`Launching SvelteKit's official CLI for: ${projectName}`);
     logger.info('');

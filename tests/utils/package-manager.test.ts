@@ -6,6 +6,7 @@ import {
   detectPackageManager,
   detectPackageManagerFromCwd,
   detectYarnFlavor,
+  getPackageManagerBinaryInvocation,
   getAddCommand,
   getDevCommand,
   getDlxCommand,
@@ -19,6 +20,7 @@ import type { PackageManager } from '../../src/utils/package-manager.js';
 
 const packageManagers: PackageManager[] = ['npm', 'pnpm', 'yarn', 'bun'];
 let tempDir: string;
+const originalPlatform = process.platform;
 
 beforeEach(async () => {
   tempDir = await mkdtemp(join(tmpdir(), 'scafix-pm-utils-'));
@@ -26,6 +28,11 @@ beforeEach(async () => {
 
 afterEach(async () => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+  Object.defineProperty(process, 'platform', {
+    configurable: true,
+    value: originalPlatform,
+  });
   await rm(tempDir, { force: true, recursive: true });
 });
 
@@ -167,6 +174,26 @@ describe('detectYarnFlavor', () => {
     );
 
     expect(detectYarnFlavor(projectPath)).toBe('classic');
+  });
+
+  it('uses the Windows shell to resolve the yarn executable fallback', () => {
+    Object.defineProperty(process, 'platform', {
+      configurable: true,
+      value: 'win32',
+    });
+    expect(getPackageManagerBinaryInvocation('yarn', ['--version'])).toEqual({
+      command: process.env.ComSpec ?? 'cmd.exe',
+      args: ['/d', '/s', '/c', 'yarn', '--version'],
+      options: {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      },
+    });
+  });
+
+  it('falls back to classic when yarn executable detection fails', () => {
+    vi.stubEnv('PATH', '');
+    expect(detectYarnFlavor(tempDir)).toBe('classic');
   });
 });
 

@@ -7,7 +7,11 @@ import {
   cleanupFailedScaffold,
   createMissingParentDirectories,
 } from './shared/scaffold.js';
-import { resolveChoiceOverride, shouldAcceptPromptDefaults } from './shared/prompting.js';
+import {
+  assertSupportedOverrides,
+  resolveChoiceOverride,
+  shouldAcceptPromptDefaults,
+} from './shared/prompting.js';
 import type { CreateOptions, StackAdapter } from '../types/stack.js';
 import { exec } from '../utils/exec.js';
 import { getEslintPackages } from '../utils/eslint.js';
@@ -687,6 +691,16 @@ export const expressAdapter: StackAdapter = {
     if (dirInfo.exists) {
       throw new Error(`Directory ${directory} already exists`);
     }
+
+    assertSupportedOverrides(options, [
+      'typescript',
+      'pattern',
+      'eslint',
+      'prettier',
+      'cors',
+      'helmet',
+      'dotenv',
+    ]);
 
     logger.info(`Creating Express project: ${projectName}`);
 

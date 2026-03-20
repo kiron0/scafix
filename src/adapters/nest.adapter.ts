@@ -11,7 +11,7 @@ import {
   installProjectDependencies,
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
-import { shouldAcceptPromptDefaults } from './shared/prompting.js';
+import { assertSupportedOverrides, shouldAcceptPromptDefaults } from './shared/prompting.js';
 
 function resolveBooleanOverride(value: unknown): boolean | undefined {
   return typeof value === 'boolean' ? value : undefined;
@@ -39,6 +39,8 @@ export const nestAdapter: StackAdapter = {
       logger.info(`Please choose a different project name or remove the existing directory.`);
       throw new CliExitError(1);
     }
+
+    assertSupportedOverrides(options, ['typescript', 'strict']);
 
     logger.info(`Launching NestJS's official CLI for: ${projectName}`);
     logger.info('');

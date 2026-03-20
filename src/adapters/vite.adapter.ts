@@ -18,7 +18,11 @@ import {
   validateDirectory,
   validateProjectName,
 } from '../utils/validate.js';
-import { resolveChoiceOverride, shouldAcceptPromptDefaults } from './shared/prompting.js';
+import {
+  assertSupportedOverrides,
+  resolveChoiceOverride,
+  shouldAcceptPromptDefaults,
+} from './shared/prompting.js';
 
 async function fileExists(filePath: string): Promise<boolean> {
   try {
@@ -590,6 +594,17 @@ export const viteReactAdapter: StackAdapter = {
       logger.info(`Please choose a different project name or remove the existing directory.`);
       throw new CliExitError(1);
     }
+
+    assertSupportedOverrides(options, [
+      'template',
+      'framework',
+      'typescript',
+      'tailwind',
+      'tailwindVersion',
+      'shadcn',
+      'shadcnVue',
+      'prettier',
+    ]);
 
     const promptedCustomizations = await promptViteReactCustomizations({
       yes: shouldAcceptPromptDefaults(options),

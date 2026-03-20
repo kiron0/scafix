@@ -13,7 +13,11 @@ import {
   installProjectDependencies,
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
-import { resolveChoiceOverride, shouldAcceptPromptDefaults } from './shared/prompting.js';
+import {
+  assertSupportedOverrides,
+  resolveChoiceOverride,
+  shouldAcceptPromptDefaults,
+} from './shared/prompting.js';
 
 const ZARD_SCHEMA_URL = 'https://zardui.com/schema.json';
 const ZARD_REGISTRY_URL = 'https://zardui.com/r';
@@ -553,6 +557,8 @@ export const angularAdapter: StackAdapter = {
       logger.info(`Please choose a different project name or remove the existing directory.`);
       throw new CliExitError(1);
     }
+
+    assertSupportedOverrides(options, ['style', 'ssr', 'routing', 'zard']);
 
     logger.info(`Launching Angular CLI for: ${projectName}`);
     logger.info('');

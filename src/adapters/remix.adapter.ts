@@ -12,6 +12,7 @@ import {
   installProjectDependencies,
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
+import { assertSupportedOverrides, shouldAcceptPromptDefaults } from './shared/prompting.js';
 
 export const remixAdapter: StackAdapter = {
   id: 'remix',
@@ -37,11 +38,13 @@ export const remixAdapter: StackAdapter = {
       throw new CliExitError(1);
     }
 
+    assertSupportedOverrides(options, []);
+
     logger.info(`Launching React Router's official CLI for: ${projectName}`);
     logger.info('');
 
     await promptRemixCustomizations({
-      yes: options.yes,
+      yes: shouldAcceptPromptDefaults(options),
     });
     const yesFlag = options.yes ? ['--yes'] : [];
 

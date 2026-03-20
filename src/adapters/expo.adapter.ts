@@ -10,7 +10,11 @@ import {
   createMissingParentDirectories,
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
-import { resolveChoiceOverride, shouldAcceptPromptDefaults } from './shared/prompting.js';
+import {
+  assertSupportedOverrides,
+  resolveChoiceOverride,
+  shouldAcceptPromptDefaults,
+} from './shared/prompting.js';
 
 function resolveExpoTemplateOverride(
   value: unknown
@@ -45,6 +49,8 @@ export const expoAdapter: StackAdapter = {
       logger.info(`Please choose a different project name or remove the existing directory.`);
       throw new CliExitError(1);
     }
+
+    assertSupportedOverrides(options, ['template']);
 
     logger.info(`Launching Expo's official CLI for: ${projectName}`);
     logger.info('');

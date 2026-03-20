@@ -89,6 +89,19 @@ describe.sequential('remixAdapter', () => {
     );
   });
 
+  it('rejects unsupported global override flags instead of silently ignoring them', async () => {
+    await expect(
+      remixAdapter.create({
+        packageManager: 'npm',
+        projectName: 'demo-remix-template',
+        template: 'starter',
+        yes: true,
+      })
+    ).rejects.toThrow('Option --template is not supported for this stack');
+
+    expect(mocks.exec).not.toHaveBeenCalled();
+  });
+
   it('cleans up on failure', async () => {
     mocks.exec.mockRejectedValue(new Error('remix failed'));
 

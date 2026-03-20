@@ -6,6 +6,7 @@ export const SUPPORTED_PACKAGE_MANAGERS = ['npm', 'pnpm', 'yarn', 'bun'] as cons
 
 export type PackageManager = (typeof SUPPORTED_PACKAGE_MANAGERS)[number];
 export type YarnFlavor = 'classic' | 'berry';
+const WINDOWS_SHELL = process.env.ComSpec ?? 'cmd.exe';
 
 interface PackageManagerCommandOptions {
   directory?: string;
@@ -153,12 +154,43 @@ function parseYarnMajorVersion(version: string): number | null {
   return Number.isNaN(major) ? null : major;
 }
 
-function detectYarnFlavorFromExecutable(): YarnFlavor {
-  try {
-    const version = execFileSync('yarn', ['--version'], {
+export function getPackageManagerBinaryInvocation(command: string, args: string[]): {
+  command: string;
+  args: string[];
+  options: {
+    encoding: 'utf8';
+    stdio: ['ignore', 'pipe', 'ignore'];
+  };
+} {
+  if (process.platform === 'win32') {
+    return {
+      command: WINDOWS_SHELL,
+      args: ['/d', '/s', '/c', command, ...args],
+      options: {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      },
+    };
+  }
+
+  return {
+    command,
+    args,
+    options: {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
-    });
+    },
+  };
+}
+
+function execPackageManagerBinary(command: string, args: string[]): string {
+  const invocation = getPackageManagerBinaryInvocation(command, args);
+  return execFileSync(invocation.command, invocation.args, invocation.options);
+}
+
+function detectYarnFlavorFromExecutable(): YarnFlavor {
+  try {
+    const version = execPackageManagerBinary('yarn', ['--version']);
     const major = parseYarnMajorVersion(version);
     return major !== null && major >= 2 ? 'berry' : 'classic';
   } catch {
