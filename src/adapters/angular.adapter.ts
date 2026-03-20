@@ -13,6 +13,7 @@ import {
   installProjectDependencies,
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
+import { resolveChoiceOverride, shouldAcceptPromptDefaults } from './shared/prompting.js';
 
 const ZARD_SCHEMA_URL = 'https://zardui.com/schema.json';
 const ZARD_REGISTRY_URL = 'https://zardui.com/r';
@@ -192,7 +193,7 @@ function resolveBooleanOverride(value: unknown): boolean | undefined {
 }
 
 function resolveAngularStyleOverride(value: unknown): 'css' | 'scss' | 'less' | undefined {
-  return value === 'css' || value === 'scss' || value === 'less' ? value : undefined;
+  return resolveChoiceOverride(value, 'style', ['css', 'scss', 'less']);
 }
 
 function applyAngularCustomizationOverrides(
@@ -557,7 +558,7 @@ export const angularAdapter: StackAdapter = {
     logger.info('');
 
     const promptedCustomizations = await promptAngularCustomizations({
-      yes: options.yes,
+      yes: shouldAcceptPromptDefaults(options),
     });
     const customizations = applyAngularCustomizationOverrides(promptedCustomizations, options);
     if (customizations.zard && customizations.style !== 'css') {

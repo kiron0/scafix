@@ -11,6 +11,7 @@ import {
   installProjectDependencies,
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
+import { shouldAcceptPromptDefaults } from './shared/prompting.js';
 
 function resolveBooleanOverride(value: unknown): boolean | undefined {
   return typeof value === 'boolean' ? value : undefined;
@@ -56,7 +57,7 @@ export const t3Adapter: StackAdapter = {
     logger.info('');
 
     const promptedCustomizations = await promptT3Customizations({
-      yes: options.yes,
+      yes: shouldAcceptPromptDefaults(options),
     });
     const customizations = {
       ...promptedCustomizations,

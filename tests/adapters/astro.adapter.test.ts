@@ -188,6 +188,19 @@ describe.sequential('astroAdapter', () => {
     );
   });
 
+  it('rejects invalid template overrides instead of silently falling back', async () => {
+    await expect(
+      astroAdapter.create({
+        packageManager: 'npm',
+        projectName: 'demo-astro-invalid',
+        template: 'starter',
+        yes: true,
+      })
+    ).rejects.toThrow('Invalid value for --template: starter. Expected one of: minimal, blog, docs');
+
+    expect(mocks.exec).not.toHaveBeenCalled();
+  });
+
   it('always disables Astro git initialisation so root commands remain the single git owner', async () => {
     await astroAdapter.create({
       git: true,

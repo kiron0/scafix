@@ -13,6 +13,7 @@ import {
   createMissingParentDirectories,
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
+import { shouldAcceptPromptDefaults } from './shared/prompting.js';
 
 function resolveBooleanOverride(value: unknown): boolean | undefined {
   return typeof value === 'boolean' ? value : undefined;
@@ -105,7 +106,7 @@ export const nextAdapter: StackAdapter = {
 
     const customizations = applyNextCustomizationOverrides(
       await promptNextCustomizations({
-        yes: options.yes,
+        yes: shouldAcceptPromptDefaults(options),
       }),
       options
     );

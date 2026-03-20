@@ -6,11 +6,24 @@ import { fileURLToPath } from 'url';
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const eslintCliPath = join(packageRoot, 'node_modules', 'eslint', 'bin', 'eslint.js');
 const sharedNodeModulesPath = join(packageRoot, 'node_modules');
+const windowsShell = process.env.ComSpec ?? 'cmd.exe';
+
+function execNpmSync(args: string[], options: Parameters<typeof execFileSync>[2]): string {
+  if (process.platform === 'win32') {
+    return execFileSync(windowsShell, ['/d', '/s', '/c', 'npm', ...args], options);
+  }
+
+  return execFileSync('npm', args, options);
+}
 
 function ensureNodeModulesLink(projectPath: string): void {
   const projectNodeModulesPath = join(projectPath, 'node_modules');
   if (!existsSync(projectNodeModulesPath)) {
-    symlinkSync(sharedNodeModulesPath, projectNodeModulesPath, 'dir');
+    symlinkSync(
+      sharedNodeModulesPath,
+      projectNodeModulesPath,
+      process.platform === 'win32' ? 'junction' : 'dir'
+    );
   }
 }
 
@@ -54,7 +67,7 @@ export function runGeneratedLint(projectPath: string, pattern: string): void {
 }
 
 export function getPackedFileNames(projectPath: string, cachePath: string): string[] {
-  const packOutput = execFileSync('npm', ['pack', '--dry-run', '--json', '--cache', cachePath], {
+  const packOutput = execNpmSync(['pack', '--dry-run', '--json', '--cache', cachePath], {
     cwd: projectPath,
     encoding: 'utf8',
     stdio: 'pipe',

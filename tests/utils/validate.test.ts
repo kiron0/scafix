@@ -1,3 +1,4 @@
+import { isAbsolute } from 'path';
 import { describe, expect, it } from 'vitest';
 import {
   getDefaultDirectoryName,
@@ -77,7 +78,7 @@ describe('validateDirectory', () => {
   it('path is an absolute path containing the directory name', () => {
     const result = validateDirectory('my-project');
     expect(result.path).toContain('my-project');
-    expect(result.path.startsWith('/')).toBe(true);
+    expect(isAbsolute(result.path)).toBe(true);
   });
 
   it('returns invalid for reserved Windows path segments', () => {

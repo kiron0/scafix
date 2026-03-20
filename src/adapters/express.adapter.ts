@@ -7,6 +7,7 @@ import {
   cleanupFailedScaffold,
   createMissingParentDirectories,
 } from './shared/scaffold.js';
+import { resolveChoiceOverride, shouldAcceptPromptDefaults } from './shared/prompting.js';
 import type { CreateOptions, StackAdapter } from '../types/stack.js';
 import { exec } from '../utils/exec.js';
 import { getEslintPackages } from '../utils/eslint.js';
@@ -19,9 +20,7 @@ function resolveBooleanOverride(value: unknown): boolean | undefined {
 }
 
 function resolvePatternOverride(value: unknown): ExpressCustomizations['pattern'] | undefined {
-  return value === 'mvc' || value === 'rest' || value === 'layered' || value === 'simple'
-    ? value
-    : undefined;
+  return resolveChoiceOverride(value, 'pattern', ['mvc', 'rest', 'layered', 'simple']);
 }
 
 function applyCustomizationOverrides(
@@ -694,7 +693,7 @@ export const expressAdapter: StackAdapter = {
     // Prompt for customizations
     const customizations = applyCustomizationOverrides(
       await promptExpressCustomizations({
-        yes: Boolean(options.yes),
+        yes: shouldAcceptPromptDefaults(options),
       }),
       options
     );

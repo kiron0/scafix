@@ -11,6 +11,7 @@ import {
   createMissingParentDirectories,
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
+import { resolveChoiceOverride, shouldAcceptPromptDefaults } from './shared/prompting.js';
 
 function resolveBooleanOverride(value: unknown): boolean | undefined {
   return typeof value === 'boolean' ? value : undefined;
@@ -19,13 +20,13 @@ function resolveBooleanOverride(value: unknown): boolean | undefined {
 function resolveSvelteKitTemplateOverride(
   value: unknown
 ): Awaited<ReturnType<typeof promptSvelteKitCustomizations>>['template'] | undefined {
-  return value === 'minimal' || value === 'demo' || value === 'library' ? value : undefined;
+  return resolveChoiceOverride(value, 'template', ['minimal', 'demo', 'library']);
 }
 
 function resolveSvelteKitTypesOverride(
   value: unknown
 ): Awaited<ReturnType<typeof promptSvelteKitCustomizations>>['types'] | undefined {
-  return value === 'ts' || value === 'jsdoc' ? value : undefined;
+  return resolveChoiceOverride(value, 'types', ['ts', 'jsdoc']);
 }
 
 export const sveltekitAdapter: StackAdapter = {
@@ -55,7 +56,7 @@ export const sveltekitAdapter: StackAdapter = {
     logger.info('');
 
     const promptedCustomizations = await promptSvelteKitCustomizations({
-      yes: options.yes,
+      yes: shouldAcceptPromptDefaults(options),
     });
     const customizations = {
       ...promptedCustomizations,

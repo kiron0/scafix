@@ -10,11 +10,12 @@ import {
   createMissingParentDirectories,
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
+import { resolveChoiceOverride, shouldAcceptPromptDefaults } from './shared/prompting.js';
 
 function resolveNuxtTemplateOverride(
   value: unknown
 ): Awaited<ReturnType<typeof promptNuxtCustomizations>>['template'] | undefined {
-  return value === 'minimal' || value === 'content' || value === 'ui' ? value : undefined;
+  return resolveChoiceOverride(value, 'template', ['minimal', 'content', 'ui']);
 }
 
 export const nuxtAdapter: StackAdapter = {
@@ -44,7 +45,7 @@ export const nuxtAdapter: StackAdapter = {
     logger.info('');
 
     const promptedCustomizations = await promptNuxtCustomizations({
-      yes: options.yes,
+      yes: shouldAcceptPromptDefaults(options),
     });
     const customizations = {
       ...promptedCustomizations,

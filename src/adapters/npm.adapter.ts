@@ -7,6 +7,7 @@ import {
   cleanupFailedScaffold,
   createMissingParentDirectories,
 } from './shared/scaffold.js';
+import { resolveChoiceOverride, shouldAcceptPromptDefaults } from './shared/prompting.js';
 import type { CreateOptions, StackAdapter } from '../types/stack.js';
 import { exec } from '../utils/exec.js';
 import { getEslintPackages } from '../utils/eslint.js';
@@ -31,15 +32,13 @@ function resolveBooleanOverride(value: unknown): boolean | undefined {
 function resolveBuildToolOverride(
   value: unknown
 ): NpmPackageCustomizations['buildTool'] | undefined {
-  return value === 'tsup' || value === 'rollup' || value === 'esbuild' || value === 'none'
-    ? value
-    : undefined;
+  return resolveChoiceOverride(value, 'build-tool', ['tsup', 'rollup', 'esbuild', 'none']);
 }
 
 function resolveTestFrameworkOverride(
   value: unknown
 ): NpmPackageCustomizations['testFramework'] | undefined {
-  return value === 'vitest' || value === 'jest' || value === 'none' ? value : undefined;
+  return resolveChoiceOverride(value, 'test-framework', ['vitest', 'jest', 'none']);
 }
 
 function applyCustomizationOverrides(
@@ -139,7 +138,7 @@ export const npmPackageAdapter: StackAdapter = {
     // Prompt for customizations
     const customizations = applyCustomizationOverrides(
       await promptNpmPackageCustomizations({
-        yes: Boolean(options.yes),
+        yes: shouldAcceptPromptDefaults(options),
       }),
       options
     );

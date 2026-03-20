@@ -1,12 +1,29 @@
 import { execFileSync } from 'node:child_process';
 import { readFile, rm } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const readmePath = join(packageRoot, 'README.md');
 const packCachePath = join(packageRoot, '.npm-pack-cache');
+const windowsShell = process.env.ComSpec ?? 'cmd.exe';
+
+function execNpmSync(args: string[]): string {
+  if (process.platform === 'win32') {
+    return execFileSync(windowsShell, ['/d', '/s', '/c', 'npm', ...args], {
+      cwd: packageRoot,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+  }
+
+  return execFileSync('npm', args, {
+    cwd: packageRoot,
+    encoding: 'utf8',
+    stdio: 'pipe',
+  });
+}
 
 let packedTarballPath: string | null = null;
 
@@ -14,11 +31,7 @@ function packPackage(): {
   files: string[];
   filename: string;
 } {
-  const packOutput = execFileSync('npm', ['pack', '--json', '--cache', packCachePath], {
-    cwd: packageRoot,
-    encoding: 'utf8',
-    stdio: 'pipe',
-  });
+  const packOutput = execNpmSync(['pack', '--json', '--cache', packCachePath]);
 
   const [packSummary] = JSON.parse(packOutput) as Array<{
     filename: string;
@@ -36,7 +49,9 @@ function extractPackedFile(relativePath: string): string {
     throw new Error('Package tarball has not been created');
   }
 
-  return execFileSync('tar', ['-xOf', packedTarballPath, relativePath], {
+  const tarballPath = relative(packageRoot, packedTarballPath) || packedTarballPath;
+
+  return execFileSync('tar', ['-xOf', tarballPath, relativePath], {
     cwd: packageRoot,
     encoding: 'utf8',
     stdio: 'pipe',
@@ -46,11 +61,7 @@ function extractPackedFile(relativePath: string): string {
 describe.sequential('package surface', () => {
   beforeAll(
     () => {
-      execFileSync('npm', ['run', 'build'], {
-        cwd: packageRoot,
-        encoding: 'utf8',
-        stdio: 'pipe',
-      });
+      execNpmSync(['run', 'build']);
     },
     30_000
   );

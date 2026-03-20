@@ -10,11 +10,12 @@ import {
   createMissingParentDirectories,
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
+import { resolveChoiceOverride, shouldAcceptPromptDefaults } from './shared/prompting.js';
 
 function resolveAstroTemplateOverride(
   value: unknown
 ): Awaited<ReturnType<typeof promptAstroCustomizations>>['template'] | undefined {
-  return value === 'minimal' || value === 'blog' || value === 'docs' ? value : undefined;
+  return resolveChoiceOverride(value, 'template', ['minimal', 'blog', 'docs']);
 }
 
 export const astroAdapter: StackAdapter = {
@@ -44,7 +45,7 @@ export const astroAdapter: StackAdapter = {
     logger.info('');
 
     const promptedCustomizations = await promptAstroCustomizations({
-      yes: options.yes,
+      yes: shouldAcceptPromptDefaults(options),
     });
     const customizations = {
       ...promptedCustomizations,

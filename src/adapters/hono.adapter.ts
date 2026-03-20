@@ -10,13 +10,17 @@ import {
   createMissingParentDirectories,
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
+import { resolveChoiceOverride, shouldAcceptPromptDefaults } from './shared/prompting.js';
 
 function resolveHonoTemplateOverride(
   value: unknown
 ): Awaited<ReturnType<typeof promptHonoCustomizations>>['template'] | undefined {
-  return value === 'nodejs' || value === 'bun' || value === 'cloudflare-workers' || value === 'vercel'
-    ? value
-    : undefined;
+  return resolveChoiceOverride(value, 'template', [
+    'nodejs',
+    'bun',
+    'cloudflare-workers',
+    'vercel',
+  ]);
 }
 
 export const honoAdapter: StackAdapter = {
@@ -46,7 +50,7 @@ export const honoAdapter: StackAdapter = {
     logger.info('');
 
     const promptedCustomizations = await promptHonoCustomizations({
-      yes: options.yes,
+      yes: shouldAcceptPromptDefaults(options),
     });
     const customizations = {
       ...promptedCustomizations,

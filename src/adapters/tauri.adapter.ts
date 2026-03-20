@@ -11,20 +11,21 @@ import {
   installProjectDependencies,
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
+import { resolveChoiceOverride, shouldAcceptPromptDefaults } from './shared/prompting.js';
 
 function resolveTauriTemplateOverride(
   value: unknown
 ): Awaited<ReturnType<typeof promptTauriCustomizations>>['template'] | undefined {
-  return value === 'vanilla' ||
-    value === 'vanilla-ts' ||
-    value === 'react' ||
-    value === 'react-ts' ||
-    value === 'vue' ||
-    value === 'vue-ts' ||
-    value === 'svelte' ||
-    value === 'svelte-ts'
-    ? value
-    : undefined;
+  return resolveChoiceOverride(value, 'template', [
+    'vanilla',
+    'vanilla-ts',
+    'react',
+    'react-ts',
+    'vue',
+    'vue-ts',
+    'svelte',
+    'svelte-ts',
+  ]);
 }
 
 export const tauriAdapter: StackAdapter = {
@@ -54,7 +55,7 @@ export const tauriAdapter: StackAdapter = {
     logger.info('');
 
     const promptedCustomizations = await promptTauriCustomizations({
-      yes: options.yes,
+      yes: shouldAcceptPromptDefaults(options),
     });
     const customizations = {
       ...promptedCustomizations,

@@ -36,12 +36,20 @@ vi.mock('../../src/utils/logger.js', () => ({
 
 import { nextAdapter } from '../../src/adapters/next.adapter.js';
 
+function setStdinTty(value: boolean): void {
+  Object.defineProperty(process.stdin, 'isTTY', {
+    configurable: true,
+    value,
+  });
+}
+
 describe.sequential('nextAdapter', () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;
   let tempDir: string;
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    setStdinTty(true);
     tempDir = await mkdtemp(join(tmpdir(), 'scafix-next-adapter-'));
     cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(tempDir);
     mocks.exec.mockImplementation(async (_command, args, options) => {
@@ -176,6 +184,40 @@ describe.sequential('nextAdapter', () => {
       ['--yes', 'shadcn@latest', 'init', '--defaults', '--yes', '--template', 'next', '--cwd', projectPath],
       expect.objectContaining({
         cwd: projectPath,
+        stdio: 'inherit',
+      })
+    );
+  });
+
+  it('falls back to non-interactive defaults when stdin is not a TTY', async () => {
+    setStdinTty(false);
+
+    await nextAdapter.create({
+      packageManager: 'npm',
+      projectName: 'demo-next-non-tty',
+    });
+
+    expect(mocks.promptNextCustomizations).toHaveBeenCalledWith({
+      yes: true,
+    });
+    expect(mocks.exec).toHaveBeenCalledWith(
+      'npx',
+      [
+        'create-next-app@latest',
+        'demo-next-non-tty',
+        '--ts',
+        '--eslint',
+        '--app',
+        '--src-dir',
+        '--tailwind',
+        '--import-alias',
+        '@/*',
+        '--use-npm',
+        '--disable-git',
+        '--yes',
+      ],
+      expect.objectContaining({
+        cwd: tempDir,
         stdio: 'inherit',
       })
     );

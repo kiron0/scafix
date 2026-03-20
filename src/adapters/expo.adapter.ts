@@ -10,13 +10,17 @@ import {
   createMissingParentDirectories,
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
+import { resolveChoiceOverride, shouldAcceptPromptDefaults } from './shared/prompting.js';
 
 function resolveExpoTemplateOverride(
   value: unknown
 ): Awaited<ReturnType<typeof promptExpoCustomizations>>['template'] | undefined {
-  return value === 'default@sdk-55' || value === 'blank' || value === 'tabs' || value === 'bare-minimum'
-    ? value
-    : undefined;
+  return resolveChoiceOverride(value, 'template', [
+    'default@sdk-55',
+    'blank',
+    'tabs',
+    'bare-minimum',
+  ]);
 }
 
 export const expoAdapter: StackAdapter = {
@@ -46,7 +50,7 @@ export const expoAdapter: StackAdapter = {
     logger.info('');
 
     const promptedCustomizations = await promptExpoCustomizations({
-      yes: options.yes,
+      yes: shouldAcceptPromptDefaults(options),
     });
     const customizations = {
       ...promptedCustomizations,

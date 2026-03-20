@@ -18,6 +18,7 @@ import {
   validateDirectory,
   validateProjectName,
 } from '../utils/validate.js';
+import { resolveChoiceOverride, shouldAcceptPromptDefaults } from './shared/prompting.js';
 
 async function fileExists(filePath: string): Promise<boolean> {
   try {
@@ -50,11 +51,11 @@ function resolveBooleanOverride(value: unknown): boolean | undefined {
 }
 
 function resolveViteFrameworkOverride(value: unknown): 'react' | 'vue' | undefined {
-  return value === 'react' || value === 'vue' ? value : undefined;
+  return resolveChoiceOverride(value, 'framework', ['react', 'vue']);
 }
 
 function resolveViteTailwindVersionOverride(value: unknown): 'v3' | 'v4' | undefined {
-  return value === 'v3' || value === 'v4' ? value : undefined;
+  return resolveChoiceOverride(value, 'tailwind-version', ['v3', 'v4']);
 }
 
 function applyViteCustomizationOverrides(
@@ -63,18 +64,24 @@ function applyViteCustomizationOverrides(
 ): Awaited<ReturnType<typeof promptViteReactCustomizations>> {
   let framework = customizations.framework;
   let typescript = customizations.typescript;
+  const templateOverride = resolveChoiceOverride(options.template, 'template', [
+    'react',
+    'react-ts',
+    'vue',
+    'vue-ts',
+  ]);
 
-  if (typeof options.template === 'string') {
-    if (options.template === 'react') {
+  if (templateOverride !== undefined) {
+    if (templateOverride === 'react') {
       framework = 'react';
       typescript = false;
-    } else if (options.template === 'react-ts') {
+    } else if (templateOverride === 'react-ts') {
       framework = 'react';
       typescript = true;
-    } else if (options.template === 'vue') {
+    } else if (templateOverride === 'vue') {
       framework = 'vue';
       typescript = false;
-    } else if (options.template === 'vue-ts') {
+    } else if (templateOverride === 'vue-ts') {
       framework = 'vue';
       typescript = true;
     }
@@ -585,7 +592,7 @@ export const viteReactAdapter: StackAdapter = {
     }
 
     const promptedCustomizations = await promptViteReactCustomizations({
-      yes: options.yes,
+      yes: shouldAcceptPromptDefaults(options),
     });
     const customizations = applyViteCustomizationOverrides(promptedCustomizations, options);
 

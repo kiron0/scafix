@@ -7,6 +7,23 @@ import { APP_CONFIG } from '../../src/config/index.js';
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const cliEntry = join(packageRoot, 'dist', 'index.js');
 const cliEntryUrl = pathToFileURL(cliEntry).href;
+const windowsShell = process.env.ComSpec ?? 'cmd.exe';
+
+function execNpmSync(args: string[]): string {
+  if (process.platform === 'win32') {
+    return execFileSync(windowsShell, ['/d', '/s', '/c', 'npm', ...args], {
+      cwd: packageRoot,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+  }
+
+  return execFileSync('npm', args, {
+    cwd: packageRoot,
+    encoding: 'utf8',
+    stdio: 'pipe',
+  });
+}
 
 function runCli(args: string[]) {
   return spawnSync(process.execPath, [cliEntry, ...args], {
@@ -19,11 +36,7 @@ function runCli(args: string[]) {
 describe.sequential('built CLI root wiring', () => {
   beforeAll(
     () => {
-      execFileSync('npm', ['run', 'build'], {
-        cwd: packageRoot,
-        encoding: 'utf8',
-        stdio: 'pipe',
-      });
+      execNpmSync(['run', 'build']);
     },
     30_000
   );
@@ -114,10 +127,17 @@ describe.sequential('built CLI root wiring', () => {
       }
     );
 
-    expect(result.signal).toBeNull();
-    expect(result.code).toBe(130);
+    if (process.platform === 'win32') {
+      expect(result.signal).toBe('SIGINT');
+      expect(result.code).toBeNull();
+    } else {
+      expect(result.signal).toBeNull();
+      expect(result.code).toBe(130);
+    }
     expect(stdoutChunks.join('')).toContain(readyToken);
-    expect(stdoutChunks.join('')).toContain(APP_CONFIG.thankYouMessage);
+    if (process.platform !== 'win32') {
+      expect(stdoutChunks.join('')).toContain(APP_CONFIG.thankYouMessage);
+    }
     expect(stderrChunks.join('')).not.toContain('Error:');
   });
 });
