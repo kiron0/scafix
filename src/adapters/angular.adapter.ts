@@ -14,7 +14,7 @@ import {
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
 import {
-  assertSupportedOverrides,
+  assertSupportedStackOverrides,
   resolveChoiceOverride,
   shouldAcceptPromptDefaults,
 } from './shared/prompting.js';
@@ -558,7 +558,7 @@ export const angularAdapter: StackAdapter = {
       throw new CliExitError(1);
     }
 
-    assertSupportedOverrides(options, ['style', 'ssr', 'routing', 'zard']);
+    assertSupportedStackOverrides('angular', options);
 
     logger.info(`Launching Angular CLI for: ${projectName}`);
     logger.info('');

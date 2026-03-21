@@ -5,9 +5,12 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { useEphemeralPackageManagerCache } from './utils/package-manager-cache.js';
+import { isQuickSmokeProfile } from './utils/profile.js';
+import { runGeneratedCommand } from '../utils/scaffold.js';
 
 const describeIf = process.env.SCAFIX_RUN_NETWORK_SMOKE === '1' ? describe : describe.skip;
 useEphemeralPackageManagerCache();
+const itFullIf = isQuickSmokeProfile ? it.skip : it;
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const cliEntry = join(packageRoot, 'dist', 'index.js');
 
@@ -68,6 +71,38 @@ describeIf.sequential('built CLI smoke', () => {
   });
 
   it(
+    'scaffolds an external Astro project through the built CLI without creating a git repository when --no-git is used',
+    async () => {
+      const projectName = 'smoke-cli-astro';
+      const result = runBuiltCli(
+        [
+          'create',
+          'astro',
+          '--name',
+          projectName,
+          '--template',
+          'minimal',
+          '--yes',
+          '--no-git',
+          '--package-manager',
+          'npm',
+        ],
+        tempDir
+      );
+
+      expect(result.status).toBe(0);
+      const projectPath = join(tempDir, projectName);
+      await expect(access(join(projectPath, 'package.json'))).resolves.toBeUndefined();
+      await expect(access(join(projectPath, 'src', 'pages', 'index.astro'))).resolves.toBeUndefined();
+      await expect(access(join(projectPath, '.git'))).rejects.toThrow();
+
+      runGeneratedCommand(projectPath, 'npm', ['run', 'build']);
+      await expect(access(join(projectPath, 'dist', 'index.html'))).resolves.toBeUndefined();
+    },
+    300_000
+  );
+
+  itFullIf(
     'scaffolds through the built CLI without creating a git repository when --no-git is used',
     async () => {
       const projectName = 'smoke-cli-no-git';

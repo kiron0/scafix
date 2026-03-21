@@ -55,6 +55,7 @@ describe.sequential('astroAdapter', () => {
       }
 
       const projectPath = join(tempDir, projectName);
+      await mkdir(join(projectPath, 'node_modules', '.bin'), { recursive: true });
       await mkdir(join(projectPath, 'src', 'pages'), { recursive: true });
       await writeFile(
         join(projectPath, 'src', 'pages', 'index.astro'),
@@ -224,6 +225,71 @@ describe.sequential('astroAdapter', () => {
         cwd: tempDir,
         stdio: 'inherit',
       })
+    );
+  });
+
+  it('installs dependencies itself when Astro leaves the scaffold without node_modules', async () => {
+    mocks.exec.mockImplementation(async (command, args, options) => {
+      if (command === 'npm' && args[0] === 'create') {
+        const projectName = args[2] as string | undefined;
+        if (!projectName || options?.cwd !== tempDir) {
+          return;
+        }
+
+        const projectPath = join(tempDir, projectName);
+        await mkdir(join(projectPath, 'src', 'pages'), { recursive: true });
+        await writeFile(
+          join(projectPath, 'src', 'pages', 'index.astro'),
+          '---\n---\n<h1>Hello</h1>\n'
+        );
+        await writeFile(
+          join(projectPath, 'package.json'),
+          `${JSON.stringify({ name: projectName }, null, 2)}\n`
+        );
+        return;
+      }
+
+      if (command === 'npm' && args[0] === 'install' && options?.cwd) {
+        await mkdir(join(options.cwd, 'node_modules', '.bin'), { recursive: true });
+      }
+    });
+
+    await astroAdapter.create({
+      packageManager: 'npm',
+      projectName: 'demo-astro-fallback-install',
+      yes: true,
+    });
+
+    expect(mocks.exec).toHaveBeenNthCalledWith(
+      1,
+      'npm',
+      [
+        'create',
+        'astro@latest',
+        'demo-astro-fallback-install',
+        '--',
+        '--template',
+        'minimal',
+        '--install',
+        '--no-git',
+        '--yes',
+      ],
+      expect.objectContaining({
+        cwd: tempDir,
+        stdio: 'inherit',
+      })
+    );
+    expect(mocks.exec).toHaveBeenNthCalledWith(
+      2,
+      'npm',
+      ['install'],
+      expect.objectContaining({
+        cwd: join(tempDir, 'demo-astro-fallback-install'),
+        stdio: 'inherit',
+      })
+    );
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      'Astro did not finish installing dependencies for "demo-astro-fallback-install". Running npm install manually.'
     );
   });
 

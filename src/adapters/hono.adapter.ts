@@ -11,7 +11,7 @@ import {
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
 import {
-  assertSupportedOverrides,
+  assertSupportedStackOverrides,
   resolveChoiceOverride,
   shouldAcceptPromptDefaults,
 } from './shared/prompting.js';
@@ -50,7 +50,7 @@ export const honoAdapter: StackAdapter = {
       throw new CliExitError(1);
     }
 
-    assertSupportedOverrides(options, ['template']);
+    assertSupportedStackOverrides('hono', options);
 
     logger.info(`Launching Hono's official CLI for: ${projectName}`);
     logger.info('');

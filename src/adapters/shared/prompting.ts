@@ -1,33 +1,8 @@
-import type { CreateOptions } from '../../types/stack.js';
+import { getSupportedOverrideKeys } from '../../config/stack-capabilities.js';
+import type { CreateOptions, StackId, StackOverrideKey } from '../../types/stack.js';
+import { STACK_OVERRIDE_KEYS } from '../../types/stack.js';
 
-const STACK_OVERRIDE_KEYS = [
-  'template',
-  'framework',
-  'types',
-  'tailwindVersion',
-  'style',
-  'pattern',
-  'buildTool',
-  'testFramework',
-  'typescript',
-  'eslint',
-  'prettier',
-  'tailwind',
-  'shadcn',
-  'shadcnVue',
-  'appRouter',
-  'srcDir',
-  'ssr',
-  'routing',
-  'zard',
-  'cors',
-  'helmet',
-  'dotenv',
-  'strict',
-  'trpc',
-  'prisma',
-  'nextAuth',
-] as const;
+type OverrideOptions = Partial<Pick<CreateOptions, StackOverrideKey>>;
 
 export function shouldAcceptPromptDefaults(options: Pick<CreateOptions, 'yes'>): boolean {
   return Boolean(options.yes) || !process.stdin.isTTY;
@@ -52,7 +27,7 @@ export function resolveChoiceOverride<T extends string>(
 }
 
 export function assertSupportedOverrides(
-  options: CreateOptions,
+  options: OverrideOptions,
   supportedKeys: readonly string[]
 ): void {
   const supported = new Set(supportedKeys);
@@ -64,6 +39,10 @@ export function assertSupportedOverrides(
 
     throw new Error(`Option --${toKebabCase(key)} is not supported for this stack`);
   }
+}
+
+export function assertSupportedStackOverrides(stackId: StackId, options: OverrideOptions): void {
+  assertSupportedOverrides(options, getSupportedOverrideKeys(stackId));
 }
 
 function toKebabCase(value: string): string {

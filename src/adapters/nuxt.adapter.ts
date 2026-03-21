@@ -11,7 +11,7 @@ import {
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
 import {
-  assertSupportedOverrides,
+  assertSupportedStackOverrides,
   resolveChoiceOverride,
   shouldAcceptPromptDefaults,
 } from './shared/prompting.js';
@@ -45,7 +45,7 @@ export const nuxtAdapter: StackAdapter = {
       throw new CliExitError(1);
     }
 
-    assertSupportedOverrides(options, ['template']);
+    assertSupportedStackOverrides('nuxt', options);
 
     logger.info(`Launching Nuxt's official CLI for: ${projectName}`);
     logger.info('');

@@ -12,7 +12,7 @@ import {
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
 import {
-  assertSupportedOverrides,
+  assertSupportedStackOverrides,
   resolveChoiceOverride,
   shouldAcceptPromptDefaults,
 } from './shared/prompting.js';
@@ -55,7 +55,7 @@ export const tauriAdapter: StackAdapter = {
       throw new CliExitError(1);
     }
 
-    assertSupportedOverrides(options, ['template']);
+    assertSupportedStackOverrides('tauri', options);
 
     logger.info(`Launching Tauri's official CLI for: ${projectName}`);
     logger.info('');

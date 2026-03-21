@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { npmPackageAdapter } from '../../src/adapters/npm.adapter.js';
 import { detectPackageManager } from '../../src/utils/package-manager.js';
 import { useEphemeralPackageManagerCache } from './utils/package-manager-cache.js';
+import { getFullSmokeMatrix, getQuickSmokeRepresentatives } from './utils/profile.js';
 import { runGeneratedCommand } from '../utils/scaffold.js';
 
 const describeIf = process.env.SCAFIX_RUN_NETWORK_SMOKE === '1' ? describe : describe.skip;
@@ -36,6 +37,11 @@ const packageManagers = [
 ].filter(
   (entry) => requestedPackageManagers.size === 0 || requestedPackageManagers.has(entry.value)
 ) as const;
+const quickPackageManagers = getQuickSmokeRepresentatives(
+  packageManagers,
+  (packageManager) => packageManager.value === 'npm'
+);
+const fullPackageManagers = getFullSmokeMatrix(packageManagers);
 
 describeIf.sequential('package manager install smoke', () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;
@@ -51,7 +57,40 @@ describeIf.sequential('package manager install smoke', () => {
     await rm(tempDir, { force: true, recursive: true });
   });
 
-  it.each(packageManagers)(
+  it.each(quickPackageManagers)(
+    'quick smoke creates a representative npm package scaffold with %s lockfile behavior',
+    async ({ expectedLockfiles, value }) => {
+      const projectName = `smoke-pkg-quick-${value}`;
+      await npmPackageAdapter.create({
+        packageManager: value,
+        projectName,
+        yes: true,
+      });
+
+      const projectPath = join(tempDir, projectName);
+      await expect(access(join(projectPath, 'package.json'))).resolves.toBeUndefined();
+
+      const packageJson = JSON.parse(await readFile(join(projectPath, 'package.json'), 'utf8'));
+      expect(packageJson.name).toBe(projectName);
+      expect(detectPackageManager(projectPath)).toBe(value);
+
+      let foundLockfile = false;
+      for (const lockfile of expectedLockfiles) {
+        try {
+          await access(join(projectPath, lockfile));
+          foundLockfile = true;
+          break;
+        } catch {
+          // try next candidate
+        }
+      }
+
+      expect(foundLockfile).toBe(true);
+    },
+    300000
+  );
+
+  it.each(fullPackageManagers)(
     'creates a real npm package scaffold with %s lockfile behavior',
     async ({ expectedLockfiles, value }) => {
       const projectName = `smoke-pkg-${value}`;
@@ -115,6 +154,11 @@ const npmPackageBuildVariants = [
     typescript: false,
   },
 ] as const;
+const quickNpmPackageBuildVariants = getQuickSmokeRepresentatives(
+  npmPackageBuildVariants,
+  (variant) => variant.projectName === 'smoke-pkg-tsup'
+);
+const fullNpmPackageBuildVariants = getFullSmokeMatrix(npmPackageBuildVariants);
 
 describeIf.sequential('npm package build variant smoke', () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;
@@ -130,7 +174,33 @@ describeIf.sequential('npm package build variant smoke', () => {
     await rm(tempDir, { force: true, recursive: true });
   });
 
-  it.each(npmPackageBuildVariants)(
+  it.each(quickNpmPackageBuildVariants)(
+    'quick smoke installs, builds, tests, and packs the representative $projectName template',
+    async ({ buildTool, expectedEntry, projectName, testFramework, typescript }) => {
+      await npmPackageAdapter.create({
+        buildTool,
+        eslint: false,
+        packageManager: 'npm',
+        prettier: false,
+        projectName,
+        testFramework,
+        typescript,
+        yes: true,
+      });
+
+      const projectPath = join(tempDir, projectName);
+      const packCachePath = join(projectPath, '.npm-cache');
+
+      runGeneratedCommand(projectPath, 'npm', ['run', 'build']);
+      runGeneratedCommand(projectPath, 'npm', ['test']);
+      runGeneratedCommand(projectPath, 'npm', ['pack', '--json', '--cache', packCachePath]);
+
+      await expect(access(join(projectPath, expectedEntry))).resolves.toBeUndefined();
+    },
+    300000
+  );
+
+  it.each(fullNpmPackageBuildVariants)(
     'installs, builds, tests, and packs the generated $projectName template',
     async ({ buildTool, expectedEntry, projectName, testFramework, typescript }) => {
       await npmPackageAdapter.create({

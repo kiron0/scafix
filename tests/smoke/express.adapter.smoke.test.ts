@@ -5,9 +5,12 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { expressAdapter } from '../../src/adapters/express.adapter.js';
 import { useEphemeralPackageManagerCache } from './utils/package-manager-cache.js';
+import { isQuickSmokeProfile } from './utils/profile.js';
 
 const describeIf = process.env.SCAFIX_RUN_NETWORK_SMOKE === '1' ? describe : describe.skip;
 useEphemeralPackageManagerCache();
+const itQuickIf = isQuickSmokeProfile ? it : it.skip;
+const itFullIf = isQuickSmokeProfile ? it.skip : it;
 
 function runPackageScript(projectPath: string, script: string) {
   return spawnSync('npm', ['run', script], {
@@ -47,7 +50,32 @@ describeIf.sequential('express adapter smoke', () => {
     await rm(tempDir, { force: true, recursive: true });
   });
 
-  it('installs, lints, and builds a TypeScript express scaffold', async () => {
+  itQuickIf('quick smoke installs, lints, and builds a representative TypeScript express scaffold', async () => {
+    const projectName = 'smoke-express-quick';
+
+    await expressAdapter.create({
+      directory: projectName,
+      dotenv: true,
+      eslint: true,
+      packageManager: 'npm',
+      pattern: 'simple',
+      prettier: false,
+      projectName,
+      typescript: true,
+      yes: true,
+    });
+
+    const projectPath = join(tempDir, projectName);
+    await expect(access(join(projectPath, 'package.json'))).resolves.toBeUndefined();
+
+    const lintResult = runPackageScript(projectPath, 'lint');
+    expect(lintResult.status).toBe(0);
+
+    const buildResult = runPackageScript(projectPath, 'build');
+    expect(buildResult.status).toBe(0);
+  }, 300000);
+
+  itFullIf('installs, lints, and builds a TypeScript express scaffold', async () => {
     const projectName = 'smoke-express-ts';
 
     await expressAdapter.create({
@@ -72,7 +100,7 @@ describeIf.sequential('express adapter smoke', () => {
     expect(buildResult.status).toBe(0);
   }, 300000);
 
-  it('installs, lints, and builds a JavaScript express scaffold', async () => {
+  itFullIf('installs, lints, and builds a JavaScript express scaffold', async () => {
     const projectName = 'smoke-express-js';
 
     await expressAdapter.create({
@@ -98,7 +126,7 @@ describeIf.sequential('express adapter smoke', () => {
     expect(buildResult.status).toBe(0);
   }, 300000);
 
-  it.each([
+  itFullIf.each([
     {
       modulePath: './src/models/example.js',
       pattern: 'mvc',

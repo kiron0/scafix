@@ -11,7 +11,7 @@ import {
   installProjectDependencies,
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
-import { assertSupportedOverrides, shouldAcceptPromptDefaults } from './shared/prompting.js';
+import { assertSupportedStackOverrides, shouldAcceptPromptDefaults } from './shared/prompting.js';
 
 function resolveBooleanOverride(value: unknown): boolean | undefined {
   return typeof value === 'boolean' ? value : undefined;
@@ -53,7 +53,7 @@ export const t3Adapter: StackAdapter = {
       throw new CliExitError(1);
     }
 
-    assertSupportedOverrides(options, ['tailwind', 'trpc', 'prisma', 'nextAuth', 'appRouter']);
+    assertSupportedStackOverrides('t3', options);
 
     logger.info(`Launching T3 Stack CLI for: ${projectName}`);
     logger.info('');

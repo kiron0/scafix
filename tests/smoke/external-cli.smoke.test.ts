@@ -12,6 +12,7 @@ import { sveltekitAdapter } from '../../src/adapters/sveltekit.adapter.js';
 import { viteReactAdapter } from '../../src/adapters/vite.adapter.js';
 import type { PackageManager } from '../../src/utils/package-manager.js';
 import { useEphemeralPackageManagerCache } from './utils/package-manager-cache.js';
+import { getFullSmokeMatrix, getQuickSmokeRepresentatives } from './utils/profile.js';
 import { runGeneratedCommand } from '../utils/scaffold.js';
 
 const describeIf = process.env.SCAFIX_RUN_NETWORK_SMOKE === '1' ? describe : describe.skip;
@@ -34,6 +35,11 @@ const availablePackageManagers: PackageManager[] = (['npm', 'pnpm', 'yarn', 'bun
     isCommandAvailable(pm) &&
     (requestedPackageManagers.size === 0 || requestedPackageManagers.has(pm))
 );
+const quickPackageManagers = getQuickSmokeRepresentatives(
+  availablePackageManagers,
+  (packageManager) => packageManager === 'npm'
+);
+const fullPackageManagers = getFullSmokeMatrix(availablePackageManagers);
 
 function getScriptCommand(packageManager: PackageManager, script: string): [string, string[]] {
   if (packageManager === 'bun') {
@@ -57,7 +63,33 @@ describeIf.sequential('external CLI smoke', () => {
     await rm(tempDir, { force: true, recursive: true });
   });
 
-  it.each(availablePackageManagers)(
+  it.each(quickPackageManagers)(
+    'quick smoke scaffolds a representative real NestJS project through the official CLI with %s',
+    async (packageManager) => {
+      const projectName = `smoke-nest-quick-${packageManager}`;
+      await nestAdapter.create({
+        packageManager,
+        projectName,
+        yes: true,
+      });
+
+      const projectPath = join(tempDir, projectName);
+      await expect(access(join(projectPath, 'package.json'))).resolves.toBeUndefined();
+      await expect(access(join(projectPath, 'src', 'main.ts'))).resolves.toBeUndefined();
+      await expect(access(join(projectPath, '.git'))).rejects.toThrow();
+
+      const packageJson = JSON.parse(await readFile(join(projectPath, 'package.json'), 'utf8'));
+      expect(packageJson.name).toBe(projectName);
+
+      const [buildCommand, buildArgs] = getScriptCommand(packageManager, 'build');
+      runGeneratedCommand(projectPath, buildCommand, buildArgs);
+
+      await expect(access(join(projectPath, 'dist', 'main.js'))).resolves.toBeUndefined();
+    },
+    300000
+  );
+
+  it.each(fullPackageManagers)(
     'scaffolds a real NestJS project through the official CLI with %s',
     async (packageManager) => {
       const projectName = `smoke-nest-app-${packageManager}`;
@@ -84,7 +116,7 @@ describeIf.sequential('external CLI smoke', () => {
     300000
   );
 
-  it.each(availablePackageManagers)(
+  it.each(fullPackageManagers)(
     'keeps NestJS package metadata tied to the requested project name in a custom directory with %s',
     async (packageManager) => {
       await nestAdapter.create({
@@ -108,7 +140,7 @@ describeIf.sequential('external CLI smoke', () => {
     300000
   );
 
-  it.each(availablePackageManagers)(
+  it.each(fullPackageManagers)(
     'scaffolds a real Hono project through the official CLI with %s',
     async (packageManager) => {
       const projectName = `smoke-hono-app-${packageManager}`;
@@ -135,7 +167,7 @@ describeIf.sequential('external CLI smoke', () => {
     300000
   );
 
-  it.each(availablePackageManagers)(
+  it.each(fullPackageManagers)(
     'keeps Hono package metadata tied to the requested project name in a custom directory with %s',
     async (packageManager) => {
       await honoAdapter.create({
@@ -159,7 +191,7 @@ describeIf.sequential('external CLI smoke', () => {
     300000
   );
 
-  it.each(availablePackageManagers)(
+  it.each(fullPackageManagers)(
     'scaffolds a real SvelteKit project through the official CLI with %s',
     async (packageManager) => {
       const projectName = `smoke-sveltekit-app-${packageManager}`;
@@ -190,7 +222,7 @@ describeIf.sequential('external CLI smoke', () => {
     300000
   );
 
-  it.each(availablePackageManagers)(
+  it.each(fullPackageManagers)(
     'keeps SvelteKit package metadata tied to the requested project name in a custom directory with %s',
     async (packageManager) => {
       await sveltekitAdapter.create({
@@ -214,7 +246,7 @@ describeIf.sequential('external CLI smoke', () => {
     300000
   );
 
-  it.each(availablePackageManagers)(
+  it.each(fullPackageManagers)(
     'scaffolds a real Nuxt project through the official CLI with %s',
     async (packageManager) => {
       const projectName = `smoke-nuxt-app-${packageManager}`;
@@ -243,7 +275,7 @@ describeIf.sequential('external CLI smoke', () => {
     300000
   );
 
-  it.each(availablePackageManagers)(
+  it.each(fullPackageManagers)(
     'keeps Nuxt package metadata tied to the requested project name in a custom directory with %s',
     async (packageManager) => {
       await nuxtAdapter.create({
@@ -269,7 +301,7 @@ describeIf.sequential('external CLI smoke', () => {
     300000
   );
 
-  it.each(availablePackageManagers)(
+  it.each(fullPackageManagers)(
     'scaffolds a real Astro project through the official CLI with %s',
     async (packageManager) => {
       const projectName = `smoke-astro-app-${packageManager}`;
@@ -298,7 +330,7 @@ describeIf.sequential('external CLI smoke', () => {
     300000
   );
 
-  it.each(availablePackageManagers)(
+  it.each(fullPackageManagers)(
     'keeps Astro package metadata tied to the requested project name in a custom directory with %s',
     async (packageManager) => {
       await astroAdapter.create({
@@ -322,7 +354,7 @@ describeIf.sequential('external CLI smoke', () => {
     300000
   );
 
-  it.each(availablePackageManagers)(
+  it.each(fullPackageManagers)(
     'scaffolds a real Vite project through the official CLI with %s',
     async (packageManager) => {
       const projectName = `smoke-vite-app-${packageManager}`;
@@ -353,7 +385,7 @@ describeIf.sequential('external CLI smoke', () => {
     300000
   );
 
-  it.each(availablePackageManagers)(
+  it.each(fullPackageManagers)(
     'keeps Vite package metadata tied to the requested project name in a custom directory with %s',
     async (packageManager) => {
       await viteReactAdapter.create({
@@ -379,7 +411,7 @@ describeIf.sequential('external CLI smoke', () => {
     300000
   );
 
-  it.each(availablePackageManagers)(
+  it.each(fullPackageManagers)(
     'scaffolds a real Vite Vue project with shadcn-vue through the official CLI with %s',
     async (packageManager) => {
       const projectName = `smoke-vite-vue-app-${packageManager}`;
@@ -417,7 +449,7 @@ describeIf.sequential('external CLI smoke', () => {
     300000
   );
 
-  it.each(availablePackageManagers)(
+  it.each(fullPackageManagers)(
     'scaffolds a real Next.js project through the official CLI with %s',
     async (packageManager) => {
       const projectName = `smoke-next-app-${packageManager}`;
@@ -451,7 +483,7 @@ describeIf.sequential('external CLI smoke', () => {
     300000
   );
 
-  it.each(availablePackageManagers)(
+  it.each(fullPackageManagers)(
     'keeps Next.js package metadata tied to the requested project name in a custom directory with %s',
     async (packageManager) => {
       await nextAdapter.create({

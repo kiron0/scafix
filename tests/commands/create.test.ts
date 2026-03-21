@@ -283,6 +283,28 @@ describe('createCommand', () => {
     expect(mocks.logger.error).toHaveBeenCalledWith('Unsupported package manager: pip');
   });
 
+  it('rejects unsupported stack override flags before adapter execution', async () => {
+    mocks.getAdapterById.mockReturnValue({
+      id: 'remix',
+      name: 'Remix',
+      description: 'test adapter',
+      create: mocks.create,
+    });
+
+    await expect(
+      createCommand('remix', {
+        name: 'demo-app',
+        template: 'starter',
+        yes: true,
+      })
+    ).rejects.toBeInstanceOf(CliExitError);
+
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'Error: Option --template is not supported for this stack'
+    );
+  });
+
   it('rejects invalid explicit directories before adapter execution', async () => {
     mocks.validateDirectory.mockReturnValue({
       exists: false,

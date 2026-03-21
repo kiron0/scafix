@@ -11,6 +11,7 @@ import { remixAdapter } from '../../src/adapters/remix.adapter.js';
 import { t3Adapter } from '../../src/adapters/t3.adapter.js';
 import { tauriAdapter } from '../../src/adapters/tauri.adapter.js';
 import { useEphemeralPackageManagerCache } from './utils/package-manager-cache.js';
+import { isQuickSmokeProfile } from './utils/profile.js';
 import { runGeneratedCommand } from '../utils/scaffold.js';
 
 const describeIf = process.env.SCAFIX_RUN_NETWORK_SMOKE === '1' ? describe : describe.skip;
@@ -36,9 +37,10 @@ const runBunSmoke =
   (requestedPackageManagers.size === 0 || requestedPackageManagers.has('bun'));
 const runTauriSmoke = runNpmSmoke && isCommandAvailable('cargo');
 
-const itNpmIf = runNpmSmoke ? it : it.skip;
-const itBunIf = runBunSmoke ? it : it.skip;
-const itTauriIf = runTauriSmoke ? it : it.skip;
+const itQuickNpmIf = isQuickSmokeProfile && runNpmSmoke ? it : it.skip;
+const itNpmIf = !isQuickSmokeProfile && runNpmSmoke ? it : it.skip;
+const itBunIf = !isQuickSmokeProfile && runBunSmoke ? it : it.skip;
+const itTauriIf = !isQuickSmokeProfile && runTauriSmoke ? it : it.skip;
 
 describeIf.sequential('additional adapter smoke', () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;
@@ -53,6 +55,28 @@ describeIf.sequential('additional adapter smoke', () => {
     cwdSpy.mockRestore();
     await rm(tempDir, { force: true, recursive: true });
   });
+
+  itQuickNpmIf('quick smoke scaffolds and builds a representative Angular project', async () => {
+    const projectName = 'smoke-angular-quick-app';
+
+    await angularAdapter.create({
+      directory: projectName,
+      packageManager: 'npm',
+      projectName,
+      yes: true,
+    });
+
+    const projectPath = join(tempDir, projectName);
+    const packageJson = JSON.parse(await readFile(join(projectPath, 'package.json'), 'utf8'));
+
+    await expect(access(join(projectPath, 'package.json'))).resolves.toBeUndefined();
+    await expect(access(join(projectPath, 'angular.json'))).resolves.toBeUndefined();
+    await expect(access(join(projectPath, 'src', 'main.ts'))).resolves.toBeUndefined();
+    await expect(access(join(projectPath, '.git'))).rejects.toThrow();
+    expect(packageJson.name).toBe(projectName);
+
+    runGeneratedCommand(projectPath, 'npm', ['run', 'build']);
+  }, 300000);
 
   itNpmIf('scaffolds and builds a real Angular project', async () => {
     const projectName = 'smoke-angular-app';

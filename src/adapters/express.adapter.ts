@@ -8,7 +8,7 @@ import {
   createMissingParentDirectories,
 } from './shared/scaffold.js';
 import {
-  assertSupportedOverrides,
+  assertSupportedStackOverrides,
   resolveChoiceOverride,
   shouldAcceptPromptDefaults,
 } from './shared/prompting.js';
@@ -692,15 +692,7 @@ export const expressAdapter: StackAdapter = {
       throw new Error(`Directory ${directory} already exists`);
     }
 
-    assertSupportedOverrides(options, [
-      'typescript',
-      'pattern',
-      'eslint',
-      'prettier',
-      'cors',
-      'helmet',
-      'dotenv',
-    ]);
+    assertSupportedStackOverrides('express', options);
 
     logger.info(`Creating Express project: ${projectName}`);
 

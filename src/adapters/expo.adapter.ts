@@ -11,7 +11,7 @@ import {
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
 import {
-  assertSupportedOverrides,
+  assertSupportedStackOverrides,
   resolveChoiceOverride,
   shouldAcceptPromptDefaults,
 } from './shared/prompting.js';
@@ -50,7 +50,7 @@ export const expoAdapter: StackAdapter = {
       throw new CliExitError(1);
     }
 
-    assertSupportedOverrides(options, ['template']);
+    assertSupportedStackOverrides('expo', options);
 
     logger.info(`Launching Expo's official CLI for: ${projectName}`);
     logger.info('');

@@ -9,7 +9,7 @@ import {
   createMissingParentDirectories,
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
-import { assertSupportedOverrides } from './shared/prompting.js';
+import { assertSupportedStackOverrides } from './shared/prompting.js';
 
 export const elysiaAdapter: StackAdapter = {
   id: 'elysia',
@@ -34,7 +34,7 @@ export const elysiaAdapter: StackAdapter = {
       throw new CliExitError(1);
     }
 
-    assertSupportedOverrides(options, []);
+    assertSupportedStackOverrides('elysia', options);
 
     logger.info(`Launching Elysia's official CLI for: ${projectName}`);
     if (options.packageManager && options.packageManager !== 'bun') {

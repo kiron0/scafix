@@ -8,7 +8,7 @@ import {
   createMissingParentDirectories,
 } from './shared/scaffold.js';
 import {
-  assertSupportedOverrides,
+  assertSupportedStackOverrides,
   resolveChoiceOverride,
   shouldAcceptPromptDefaults,
 } from './shared/prompting.js';
@@ -137,13 +137,7 @@ export const npmPackageAdapter: StackAdapter = {
       throw new Error(`Directory ${directory} already exists`);
     }
 
-    assertSupportedOverrides(options, [
-      'typescript',
-      'buildTool',
-      'eslint',
-      'prettier',
-      'testFramework',
-    ]);
+    assertSupportedStackOverrides('npm', options);
 
     logger.info(`Creating NPM package: ${projectName}`);
 

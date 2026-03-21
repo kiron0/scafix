@@ -15,7 +15,7 @@
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:smoke": "node scripts/run-network-smoke.mjs",
-    "test:smoke:quick": "node scripts/run-network-smoke.mjs --package-managers npm"
+    "test:smoke:quick": "node scripts/run-network-smoke.mjs --profile quick --package-managers npm"
   },
   "keywords": [
     "cli",

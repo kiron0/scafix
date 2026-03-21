@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { adapters, getAdapterById } from '../../src/adapters/index.js';
+import { STACK_CAPABILITIES } from '../../src/config/stack-capabilities.js';
+import { STACK_OVERRIDE_KEYS } from '../../src/types/stack.js';
 
 describe('adapters registry', () => {
   it('contains exactly 16 adapters', () => {
@@ -35,6 +37,22 @@ describe('adapters registry', () => {
       expect(typeof adapter.description).toBe('string');
       expect(adapter.description.length).toBeGreaterThan(0);
       expect(typeof adapter.create).toBe('function');
+    }
+  });
+
+  it('defines centralized capability metadata for every adapter', () => {
+    for (const adapter of adapters) {
+      expect(STACK_CAPABILITIES[adapter.id]).toBeDefined();
+    }
+  });
+
+  it('only uses declared override keys in the capability manifest', () => {
+    const allowedKeys = new Set(STACK_OVERRIDE_KEYS);
+
+    for (const capability of Object.values(STACK_CAPABILITIES)) {
+      for (const key of capability.supportedOverrides) {
+        expect(allowedKeys.has(key)).toBe(true);
+      }
     }
   });
 });

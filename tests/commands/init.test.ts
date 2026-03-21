@@ -224,6 +224,29 @@ describe('initCommand', () => {
     expect(mocks.logger.error).toHaveBeenCalledWith('Unsupported package manager: pip');
   });
 
+  it('rejects unsupported stack override flags before adapter execution', async () => {
+    const remixAdapter = {
+      category: 'fullstack',
+      create: vi.fn(),
+      description: 'test adapter',
+      id: 'remix',
+      name: 'Remix',
+    };
+    mocks.selectStack.mockResolvedValue(remixAdapter);
+
+    await expect(
+      initCommand({
+        name: 'my-project',
+        template: 'starter',
+      })
+    ).rejects.toBeInstanceOf(CliExitError);
+
+    expect(remixAdapter.create).not.toHaveBeenCalled();
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'Error: Option --template is not supported for this stack'
+    );
+  });
+
   it('rejects invalid explicit directories before adapter execution', async () => {
     mocks.validateDirectory.mockReturnValue({
       exists: false,

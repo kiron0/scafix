@@ -19,7 +19,7 @@ import {
   validateProjectName,
 } from '../utils/validate.js';
 import {
-  assertSupportedOverrides,
+  assertSupportedStackOverrides,
   resolveChoiceOverride,
   shouldAcceptPromptDefaults,
 } from './shared/prompting.js';
@@ -643,16 +643,7 @@ export const viteReactAdapter: StackAdapter = {
       throw new CliExitError(1);
     }
 
-    assertSupportedOverrides(options, [
-      'template',
-      'framework',
-      'typescript',
-      'tailwind',
-      'tailwindVersion',
-      'shadcn',
-      'shadcnVue',
-      'prettier',
-    ]);
+    assertSupportedStackOverrides('vite', options);
 
     const promptedCustomizations = await promptViteReactCustomizations({
       yes: shouldAcceptPromptDefaults(options),

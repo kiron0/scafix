@@ -1,3 +1,4 @@
+import { existsSync } from 'fs';
 import { join } from 'path';
 import { promptAstroCustomizations } from '../prompts/customizations.js';
 import type { CreateOptions, StackAdapter } from '../types/stack.js';
@@ -8,10 +9,11 @@ import { validateDirectory, validateProjectName } from '../utils/validate.js';
 import {
   cleanupFailedScaffold,
   createMissingParentDirectories,
+  installProjectDependencies,
   reconcileGeneratedPackageJsonName,
 } from './shared/scaffold.js';
 import {
-  assertSupportedOverrides,
+  assertSupportedStackOverrides,
   resolveChoiceOverride,
   shouldAcceptPromptDefaults,
 } from './shared/prompting.js';
@@ -45,7 +47,7 @@ export const astroAdapter: StackAdapter = {
       throw new CliExitError(1);
     }
 
-    assertSupportedOverrides(options, ['template']);
+    assertSupportedStackOverrides('astro', options);
 
     logger.info(`Launching Astro's official CLI for: ${projectName}`);
     logger.info('');
@@ -124,6 +126,12 @@ export const astroAdapter: StackAdapter = {
       createdParentDirectories = await createMissingParentDirectories(projectPath);
       await exec(cmd, args, { cwd: process.cwd(), stdio: 'inherit' });
       await reconcileGeneratedPackageJsonName(projectPath, projectName, directory);
+      if (!existsSync(join(projectPath, 'node_modules'))) {
+        logger.warn(
+          `Astro did not finish installing dependencies for "${projectName}". Running ${packageManager} install manually.`
+        );
+        await installProjectDependencies(projectPath, packageManager);
+      }
     } catch (error) {
       await cleanupFailedScaffold(projectPath, createdParentDirectories);
       throw error;

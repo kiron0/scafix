@@ -8,6 +8,7 @@ import {
   promptProjectName,
 } from '../prompts/select-stack.js';
 import type { CliOptions, CreateOptions } from '../types/stack.js';
+import { assertSupportedStackOverrides } from '../adapters/shared/prompting.js';
 import { exec } from '../utils/exec.js';
 import { CliExitError, isCliExitError } from '../utils/cli-error.js';
 import { stripGeneratedGitDirectory } from '../utils/git.js';
@@ -54,6 +55,8 @@ export async function createCommand(
       logger.info(`Available stacks: ${AVAILABLE_STACK_IDS_LABEL}`);
       throw new CliExitError(1);
     }
+
+    assertSupportedStackOverrides(adapter.id, options);
 
     // Prompt for project name if not provided
     const explicitProjectName =
